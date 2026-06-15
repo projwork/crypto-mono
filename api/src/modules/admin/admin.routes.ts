@@ -5,6 +5,7 @@ import { sendOk } from "../../lib/apiResponse.js";
 import { logEvent, listAuditEntries } from "../audit/audit.service.js";
 import { updateFxRateSchema } from "../fx/fx.schemas.js";
 import { fxService } from "../fx/fx.service.js";
+import { getAdminStats } from "./admin.stats.service.js";
 
 /**
  * Admin module — Modules 5, 10, 11, 13.
@@ -38,6 +39,14 @@ adminRouter.post(
 );
 
 adminRouter.get(
+  "/stats",
+  asyncHandler(async (_req, res) => {
+    const stats = await getAdminStats();
+    sendOk(res, { stats });
+  }),
+);
+
+adminRouter.get(
   "/audit",
   asyncHandler(async (req, res) => {
     const limit = req.query.limit ? Number(req.query.limit) : 100;
@@ -55,6 +64,6 @@ adminRouter.get(
 adminRouter.get("/", (_req, res) => {
   sendOk(res, {
     module: "admin",
-    endpoints: ["POST /fx-rate", "GET /audit"],
+    endpoints: ["GET /stats", "POST /fx-rate", "GET /audit"],
   });
 });
