@@ -102,6 +102,17 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: "Transactions",
+    href: "/admin/transactions",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M3 3v18h18" />
+        <path d="M7 7h10M7 12h10M7 17h6" strokeLinecap="round" />
+      </>,
+    ),
+  },
+  {
     label: "Liquidity",
     href: "/admin/liquidity",
     roles: ["ADMIN"],

@@ -136,6 +136,13 @@ export default function AdminDashboardPage() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <Link
+              href="/admin/transactions"
+              className="rounded-xl border border-slate-200 bg-white p-4 text-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            >
+              <p className="font-medium text-slate-900 dark:text-white">Transactions</p>
+              <p className="mt-1 text-slate-500">All transfers with filters and overrides</p>
+            </Link>
+            <Link
               href="/admin/kyc"
               className="rounded-xl border border-slate-200 bg-white p-4 text-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
             >
