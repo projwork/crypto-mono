@@ -23,3 +23,18 @@ export function humanize(value: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+/** Format USD amounts for display. */
+export function formatUsd(value: number | string | null): string {
+  if (value === null) return "Unlimited";
+  const num = typeof value === "string" ? Number(value) : value;
+  return `$${num.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}
+
+/** Resolve a backend upload path to a full URL. */
+export function uploadUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000";
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}

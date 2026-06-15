@@ -27,6 +27,11 @@ interface RequestOptions {
   _retry?: boolean;
 }
 
+interface UploadOptions {
+  auth?: boolean;
+  _retry?: boolean;
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 const attemptRefresh = async (): Promise<boolean> => {
@@ -93,6 +98,48 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return json.data;
 }
 
+async function uploadForm<T>(
+  path: string,
+  formData: FormData,
+  options: UploadOptions = {},
+): Promise<T> {
+  const { auth = true, _retry = false } = options;
+
+  const headers: Record<string, string> = {};
+  if (auth) {
+    const token = tokenStore.getAccess();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (res.status === 401 && auth && !_retry) {
+    refreshPromise ??= attemptRefresh();
+    const refreshed = await refreshPromise;
+    refreshPromise = null;
+    if (refreshed) {
+      return uploadForm<T>(path, formData, { ...options, _retry: true });
+    }
+  }
+
+  let json: ApiEnvelope<T>;
+  try {
+    json = (await res.json()) as ApiEnvelope<T>;
+  } catch {
+    throw new ApiError(res.status, "NETWORK_ERROR", "Unexpected server response");
+  }
+
+  if (!json.success) {
+    throw new ApiError(res.status, json.error.code, json.error.message, json.error.details);
+  }
+
+  return json.data;
+}
+
 export const api = {
   get: <T>(path: string, auth = true) => request<T>(path, { method: "GET", auth }),
   post: <T>(path: string, body?: unknown, auth = true) =>
@@ -100,6 +147,8 @@ export const api = {
   put: <T>(path: string, body?: unknown, auth = true) =>
     request<T>(path, { method: "PUT", body, auth }),
   delete: <T>(path: string, auth = true) => request<T>(path, { method: "DELETE", auth }),
+  upload: <T>(path: string, formData: FormData, auth = true) =>
+    uploadForm<T>(path, formData, { auth }),
 };
 
 export { API_URL };

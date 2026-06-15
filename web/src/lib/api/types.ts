@@ -72,3 +72,73 @@ export interface LoginPayload {
   email: string;
   password: string;
 }
+
+export interface PublicKycVerification {
+  id: string;
+  tier: KycTier;
+  status: KycStatus;
+  passportUrl: string | null;
+  nationalIdUrl: string | null;
+  selfieUrl: string | null;
+  proofOfAddressUrl: string | null;
+  sourceOfFunds: string | null;
+  rejectionReason: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface TransferLimit {
+  tier: KycTier;
+  kycStatus: KycStatus;
+  unlimited: boolean;
+  limitUsd: number | null;
+  usedUsd: number;
+  remainingUsd: number | null;
+}
+
+export interface TierInfo {
+  tier: KycTier;
+  monthlyLimitUsd: number | null;
+  requirements: string[];
+}
+
+export interface KycStatusResponse {
+  verification: PublicKycVerification | null;
+  tier: KycTier;
+  status: KycStatus;
+  limit: TransferLimit;
+  tiers: TierInfo[];
+}
+
+export interface SubmitKycPayload {
+  tier?: KycTier;
+  proofOfAddressUrl?: string;
+  sourceOfFunds?: string;
+  passport?: File;
+  nationalId?: File;
+  selfie?: File;
+}
+
+export interface PublicBeneficiary {
+  id: string;
+  fullName: string;
+  country: string;
+  payoutMethod: PayoutMethod;
+  bank: BankName | null;
+  accountNumber: string | null;
+  phoneNumber: string | null;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBeneficiaryPayload {
+  fullName: string;
+  country?: string;
+  payoutMethod: PayoutMethod;
+  bank?: BankName;
+  accountNumber?: string;
+  phoneNumber?: string;
+}
+
+export type UpdateBeneficiaryPayload = Partial<CreateBeneficiaryPayload>;
