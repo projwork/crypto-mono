@@ -454,11 +454,18 @@ export default function NewTransferPage() {
               </Button>
             )}
             {(transfer.status === "COMPLETED" || transfer.status === "FAILED") && (
-              <Link href="/dashboard" className="sm:flex-1">
-                <Button variant="secondary" size="lg" className="w-full">
-                  Back to dashboard
-                </Button>
-              </Link>
+              <div className="flex flex-col gap-3 sm:flex-1">
+                <Link href={`/transfers/${transfer.id}`}>
+                  <Button size="lg" className="w-full">
+                    View live timeline
+                  </Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="secondary" size="lg" className="w-full">
+                    Back to dashboard
+                  </Button>
+                </Link>
+              </div>
             )}
             {transfer.status !== "AWAITING_CRYPTO" &&
               transfer.status !== "COMPLETED" &&

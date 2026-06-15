@@ -202,3 +202,19 @@ export interface PublicTransfer {
   beneficiary: PublicBeneficiary;
   depositAddress: DepositAddress | null;
 }
+
+export interface TransferStatusEvent {
+  transferId: string;
+  reference: string;
+  status: TransferStatus;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TimelineEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  metadata: unknown;
+  createdAt: string;
+}
