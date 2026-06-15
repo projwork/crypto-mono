@@ -157,6 +157,13 @@ export default function AdminDashboardPage() {
               <p className="mt-1 text-slate-500">Swiss & Ethiopia balances and ledger</p>
             </Link>
             <Link
+              href="/admin/controls"
+              className="rounded-xl border border-slate-200 bg-white p-4 text-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+            >
+              <p className="font-medium text-slate-900 dark:text-white">Admin controls</p>
+              <p className="mt-1 text-slate-500">FX rate updates & failed transfer overrides</p>
+            </Link>
+            <Link
               href="/admin/audit"
               className="rounded-xl border border-slate-200 bg-white p-4 text-sm transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
             >

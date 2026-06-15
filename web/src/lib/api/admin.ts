@@ -37,6 +37,19 @@ export interface AdminTransferFilters {
 
 export type OverrideAction = "reverse" | "complete";
 
+export interface UpdateFxRatePayload {
+  usdToEtb: number;
+  chfToEtb: number;
+  source?: string;
+}
+
+export interface FxRate {
+  usdToEtb: number;
+  chfToEtb: number;
+  timestamp: string;
+  source?: string;
+}
+
 export const adminApi = {
   async getStats(): Promise<AdminStats> {
     const { stats } = await api.get<{ stats: AdminStats }>("/api/admin/stats");
@@ -71,5 +84,9 @@ export const adminApi = {
       { action, note },
     );
     return transfer;
+  },
+
+  async updateFxRate(payload: UpdateFxRatePayload): Promise<FxRate> {
+    return api.post<FxRate>("/api/admin/fx-rate", payload);
   },
 };

@@ -136,6 +136,17 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: "Controls",
+    href: "/admin/controls",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M4 21V14M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" strokeLinecap="round" />
+        <path d="M2 14h4M10 8h4M18 12h4" strokeLinecap="round" />
+      </>,
+    ),
+  },
+  {
     label: "Audit Log",
     href: "/admin/audit",
     roles: ["ADMIN"],
