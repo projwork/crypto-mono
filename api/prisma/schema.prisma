@@ -1,0 +1,298 @@
+// Prisma schema — Crypto-to-ETB Remittance Platform (Module 1)
+// Entities follow PRD §14 "Database Schema". See CONTRACTS.md for model docs.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  SENDER
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// KYC tiers map to monthly limits (PRD §11): TIER_1 $500, TIER_2 $5,000, TIER_3 unlimited.
+enum KycTier {
+  TIER_1
+  TIER_2
+  TIER_3
+}
+
+enum PayoutMethod {
+  BANK
+  TELEBIRR
+}
+
+enum BankName {
+  CBE
+  AWASH
+  DASHEN
+}
+
+enum AssetType {
+  USDC
+  USDT
+  ETH
+}
+
+/// Transaction lifecycle (PRD §7). Happy path + failure paths.
+enum TransferStatus {
+  INITIATED
+  AWAITING_CRYPTO
+  BLOCKCHAIN_PENDING
+  BLOCKCHAIN_CONFIRMED
+  SWISS_FUNDS_RECEIVED
+  FX_CONVERTED
+  PAYOUT_PROCESSING
+  PAYOUT_SENT
+  COMPLETED
+  FAILED
+  REVERSED
+  EXPIRED
+}
+
+enum LiquidityPoolType {
+  SWISS
+  ETHIOPIA
+}
+
+enum LiquidityTransactionType {
+  CREDIT
+  DEBIT
+  RESERVE
+  RELEASE
+  DISBURSE
+  SETTLEMENT
+}
+
+enum NotificationType {
+  TRANSFER_UPDATE
+  KYC_UPDATE
+  LIQUIDITY_ALERT
+  SYSTEM
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// Diaspora sender or admin account (PRD §5, §6 Step 1).
+model User {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  phone        String
+  country      String
+  passwordHash String
+  role         Role     @default(SENDER)
+  kycTier      KycTier  @default(TIER_1)
+  kycStatus    KycStatus @default(PENDING)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  kycVerifications  KycVerification[] @relation("UserKyc")
+  reviewedKyc       KycVerification[] @relation("KycReviewer")
+  beneficiaries     Beneficiary[]
+  wallets           Wallet[]
+  transfers         Transfer[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@index([email])
+}
+
+/// KYC submission & review record (PRD §6 Step 2, §11). Prototype: manual approval.
+model KycVerification {
+  id               String    @id @default(cuid())
+  userId           String
+  tier             KycTier   @default(TIER_1)
+  status           KycStatus @default(PENDING)
+  passportUrl      String?
+  nationalIdUrl    String?
+  selfieUrl        String?
+  proofOfAddressUrl String?
+  sourceOfFunds    String?
+  rejectionReason  String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user       User  @relation("UserKyc", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("KycReviewer", fields: [reviewedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Saved payout recipient (PRD §6 Step 3, §10).
+model Beneficiary {
+  id            String       @id @default(cuid())
+  userId        String
+  fullName      String
+  country       String       @default("Ethiopia")
+  payoutMethod  PayoutMethod
+  bank          BankName?
+  accountNumber String?
+  phoneNumber   String?
+  isFavorite    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfers Transfer[]
+
+  @@index([userId])
+}
+
+/// Crypto deposit wallet/address simulation (PRD §6 Step 5, Module 6).
+model Wallet {
+  id         String    @id @default(cuid())
+  userId     String
+  asset      AssetType
+  address    String
+  transferId String?   @unique
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([address])
+}
+
+/// A remittance transfer and its lifecycle snapshot (PRD §6, §7, §9).
+model Transfer {
+  id              String         @id @default(cuid())
+  reference       String         @unique
+  senderId        String
+  beneficiaryId   String
+  asset           AssetType
+  sendAmount      Decimal        @db.Decimal(38, 18)
+  feeCrypto       Decimal        @default(0) @db.Decimal(38, 18)
+  usdValue        Decimal        @db.Decimal(20, 2)
+  usdToEtb        Decimal        @db.Decimal(20, 6)
+  grossEtb        Decimal        @db.Decimal(20, 2)
+  feeEtb          Decimal        @default(0) @db.Decimal(20, 2)
+  payoutEtb       Decimal        @db.Decimal(20, 2)
+  status          TransferStatus @default(INITIATED)
+  txHash          String?
+  swissReference  String?
+  payoutReference String?
+  failureReason   String?
+  rateTimestamp   DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  completedAt     DateTime?
+
+  sender      User          @relation(fields: [senderId], references: [id])
+  beneficiary Beneficiary   @relation(fields: [beneficiaryId], references: [id])
+  wallet      Wallet?
+  auditLogs   AuditLog[]
+  notifications Notification[]
+
+  @@index([senderId])
+  @@index([status])
+  @@index([reference])
+}
+
+/// Swiss & Ethiopia liquidity pools (PRD §8). One row per pool type.
+model LiquidityPool {
+  id                 String            @id @default(cuid())
+  type               LiquidityPoolType @unique
+  name               String
+  // Swiss pool balances
+  chfBalance         Decimal           @default(0) @db.Decimal(20, 2)
+  usdBalance         Decimal           @default(0) @db.Decimal(20, 2)
+  incomingDeposits   Decimal           @default(0) @db.Decimal(20, 2)
+  pendingSettlements Decimal           @default(0) @db.Decimal(20, 2)
+  // Ethiopia pool balances
+  etbAvailable       Decimal           @default(0) @db.Decimal(20, 2)
+  etbReserved        Decimal           @default(0) @db.Decimal(20, 2)
+  etbDisbursed       Decimal           @default(0) @db.Decimal(20, 2)
+  etbCapacity        Decimal           @default(0) @db.Decimal(20, 2)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  transactions LiquidityTransaction[]
+}
+
+/// Append-only liquidity ledger entry (PRD §8, §12 "Liquidity Ledger").
+model LiquidityTransaction {
+  id           String                   @id @default(cuid())
+  poolId       String
+  type         LiquidityTransactionType
+  currency     String
+  amount       Decimal                  @db.Decimal(20, 2)
+  balanceAfter Decimal                  @db.Decimal(20, 2)
+  referenceId  String?
+  note         String?
+  createdAt    DateTime                 @default(now())
+
+  pool LiquidityPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+  @@index([referenceId])
+}
+
+/// FX rate snapshot (PRD §9). Latest row is the active rate.
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  usdToEtb  Decimal  @db.Decimal(20, 6)
+  chfToEtb  Decimal  @db.Decimal(20, 6)
+  source    String   @default("MOCK")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Immutable audit trail for transfers & admin actions (PRD §15 "Logging").
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  transferId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor    User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([transferId])
+}
+
+/// User-facing notification (PRD §14).
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType @default(SYSTEM)
+  message    String
+  data       Json?
+  transferId String?
+  isRead     Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfer Transfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
