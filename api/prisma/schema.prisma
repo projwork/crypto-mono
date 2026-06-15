@@ -112,8 +112,24 @@ model User {
   transfers         Transfer[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
 
   @@index([email])
+}
+
+/// Persisted refresh tokens so sessions can be revoked on logout (PRD §15).
+/// Stores a SHA-256 hash of the token, never the raw value.
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// KYC submission & review record (PRD §6 Step 2, §11). Prototype: manual approval.
