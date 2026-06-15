@@ -6,3 +6,6 @@ dist
 npm-debug.log*
 .DS_Store
 coverage
+
+# Uploaded KYC documents (prototype local storage)
+uploads/
