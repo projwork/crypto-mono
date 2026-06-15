@@ -142,3 +142,63 @@ export interface CreateBeneficiaryPayload {
 }
 
 export type UpdateBeneficiaryPayload = Partial<CreateBeneficiaryPayload>;
+
+export interface TransferQuote {
+  asset: AssetType;
+  amount: number;
+  beneficiaryId: string;
+  usdValue: number;
+  usdToEtb: number;
+  grossEtb: number;
+  feeCrypto: number;
+  feeEtb: number;
+  payoutEtb: number;
+  rateTimestamp: string;
+}
+
+export interface TransferQuotePayload {
+  asset: AssetType;
+  amount: number;
+  beneficiaryId: string;
+}
+
+export interface DepositAddress {
+  id: string;
+  transferId: string;
+  asset: AssetType;
+  address: string;
+  createdAt: string;
+}
+
+export interface DepositInstructions {
+  transferId: string;
+  reference: string;
+  asset: AssetType;
+  address: string;
+  expectedAmount: string;
+  network: string;
+}
+
+export interface PublicTransfer {
+  id: string;
+  reference: string;
+  status: TransferStatus;
+  asset: AssetType;
+  sendAmount: string;
+  feeCrypto: string;
+  usdValue: string;
+  usdToEtb: string;
+  grossEtb: string;
+  feeEtb: string;
+  payoutEtb: string;
+  txHash: string | null;
+  swissReference: string | null;
+  payoutReference: string | null;
+  failureReason: string | null;
+  rateTimestamp: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  beneficiary: PublicBeneficiary;
+  depositAddress: DepositAddress | null;
+}
