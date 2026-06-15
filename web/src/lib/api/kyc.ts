@@ -6,6 +6,18 @@ import type {
   SubmitKycPayload,
 } from "./types";
 
+export interface PendingKycUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  country: string;
+}
+
+export interface PendingKycItem extends PublicKycVerification {
+  user: PendingKycUser;
+}
+
 export const kycApi = {
   async getStatus(): Promise<KycStatusResponse> {
     return api.get<KycStatusResponse>("/api/kyc/status");
@@ -31,6 +43,26 @@ export const kycApi = {
     const { verification } = await api.upload<{ verification: PublicKycVerification }>(
       "/api/kyc/submit",
       form,
+    );
+    return verification;
+  },
+
+  async listPending(): Promise<PendingKycItem[]> {
+    const { pending } = await api.get<{ pending: PendingKycItem[] }>("/api/kyc/pending");
+    return pending;
+  },
+
+  async approve(verificationId: string): Promise<PublicKycVerification> {
+    const { verification } = await api.post<{ verification: PublicKycVerification }>(
+      `/api/kyc/${verificationId}/approve`,
+    );
+    return verification;
+  },
+
+  async reject(verificationId: string, reason: string): Promise<PublicKycVerification> {
+    const { verification } = await api.post<{ verification: PublicKycVerification }>(
+      `/api/kyc/${verificationId}/reject`,
+      { reason },
     );
     return verification;
   },

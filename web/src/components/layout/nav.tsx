@@ -91,6 +91,28 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: "Admin",
+    href: "/admin",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+      </>,
+    ),
+  },
+  {
+    label: "Transactions",
+    href: "/admin/transactions",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M3 3v18h18" />
+        <path d="M7 7h10M7 12h10M7 17h6" strokeLinecap="round" />
+      </>,
+    ),
+  },
+  {
     label: "Liquidity",
     href: "/admin/liquidity",
     roles: ["ADMIN"],
@@ -110,6 +132,17 @@ export const NAV_ITEMS: NavItem[] = [
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <path d="M14 2v6h6" />
         <path d="m9 15 2 2 4-4" />
+      </>,
+    ),
+  },
+  {
+    label: "Controls",
+    href: "/admin/controls",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M4 21V14M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" strokeLinecap="round" />
+        <path d="M2 14h4M10 8h4M18 12h4" strokeLinecap="round" />
       </>,
     ),
   },
