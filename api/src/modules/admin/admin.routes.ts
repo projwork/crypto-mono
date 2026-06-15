@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authMiddleware, requireRole } from "../../middleware/auth.js";
 import { sendOk } from "../../lib/apiResponse.js";
+import { logEvent, listAuditEntries } from "../audit/audit.service.js";
 import { updateFxRateSchema } from "../fx/fx.schemas.js";
 import { fxService } from "../fx/fx.service.js";
 
@@ -17,6 +18,16 @@ adminRouter.post(
   asyncHandler(async (req, res) => {
     const input = updateFxRateSchema.parse(req.body);
     const rate = await fxService.setRate(input);
+    await logEvent({
+      actorId: req.user!.id,
+      action: "ADMIN_FX_RATE_UPDATE",
+      entityType: "ExchangeRate",
+      metadata: {
+        usdToEtb: rate.usdToEtb,
+        chfToEtb: rate.chfToEtb,
+        source: rate.source,
+      },
+    });
     sendOk(res, {
       usdToEtb: rate.usdToEtb,
       chfToEtb: rate.chfToEtb,
@@ -26,9 +37,24 @@ adminRouter.post(
   }),
 );
 
+adminRouter.get(
+  "/audit",
+  asyncHandler(async (req, res) => {
+    const limit = req.query.limit ? Number(req.query.limit) : 100;
+    const audit = await listAuditEntries({
+      entityType: typeof req.query.entityType === "string" ? req.query.entityType : undefined,
+      transferId: typeof req.query.transferId === "string" ? req.query.transferId : undefined,
+      actorId: typeof req.query.actorId === "string" ? req.query.actorId : undefined,
+      action: typeof req.query.action === "string" ? req.query.action : undefined,
+      limit: Number.isFinite(limit) ? limit : 100,
+    });
+    sendOk(res, { audit });
+  }),
+);
+
 adminRouter.get("/", (_req, res) => {
   sendOk(res, {
     module: "admin",
-    endpoints: ["POST /fx-rate"],
+    endpoints: ["POST /fx-rate", "GET /audit"],
   });
 });

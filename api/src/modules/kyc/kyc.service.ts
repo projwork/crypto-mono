@@ -1,6 +1,7 @@
 import { KycStatus, KycTier, type KycVerification, TransferStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import { logEvent } from "../audit/audit.service.js";
 import { TIER_MONTHLY_LIMIT_USD, TIER_REQUIREMENTS } from "./kyc.limits.js";
 import type { SubmitKycInput } from "./kyc.schemas.js";
 
@@ -171,6 +172,14 @@ export const approveKyc = async (adminId: string, verificationId: string) => {
     }),
   ]);
 
+  await logEvent({
+    actorId: adminId,
+    action: "KYC_APPROVED",
+    entityType: "KycVerification",
+    entityId: verificationId,
+    metadata: { userId: verification.userId, tier: verification.tier },
+  });
+
   return toPublicKyc(updated);
 };
 
@@ -195,6 +204,14 @@ export const rejectKyc = async (adminId: string, verificationId: string, reason:
       data: { kycStatus: KycStatus.REJECTED },
     }),
   ]);
+
+  await logEvent({
+    actorId: adminId,
+    action: "KYC_REJECTED",
+    entityType: "KycVerification",
+    entityId: verificationId,
+    metadata: { userId: verification.userId, reason },
+  });
 
   return toPublicKyc(updated);
 };
