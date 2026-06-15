@@ -1,7 +1,8 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { sendOk } from "../../lib/apiResponse.js";
+import { getTransferTimeline } from "../audit/audit.service.js";
 import { createTransferSchema, transferQuoteSchema } from "./transfers.schemas.js";
 import {
   createTransfer,
@@ -9,14 +10,23 @@ import {
   listMyTransfers,
   quoteTransfer,
 } from "./transfers.service.js";
+import { simulateDeposit } from "./transfers.orchestrator.js";
+import { transferStatusBus, type TransferStatusEvent } from "./transfers.events.js";
 
 /**
  * Transfers module — Modules 8 & 9.
- * POST /quote, POST /, GET /, GET /:id.
  */
 export const transfersRouter = Router();
 
-transfersRouter.use(authMiddleware);
+/** Supports Bearer header or `?accessToken=` for SSE (EventSource) clients. */
+const authWithQueryToken = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.headers.authorization && typeof req.query.accessToken === "string") {
+    req.headers.authorization = `Bearer ${req.query.accessToken}`;
+  }
+  return authMiddleware(req, res, next);
+};
+
+transfersRouter.use(authWithQueryToken);
 
 transfersRouter.post(
   "/quote",
@@ -41,6 +51,64 @@ transfersRouter.get(
   asyncHandler(async (req, res) => {
     const transfers = await listMyTransfers(req.user!.id);
     sendOk(res, { transfers });
+  }),
+);
+
+transfersRouter.get(
+  "/:id/timeline",
+  asyncHandler(async (req, res) => {
+    await getTransferById(req.user!.id, req.params.id);
+    const timeline = await getTransferTimeline(req.params.id);
+    sendOk(res, {
+      timeline: timeline.map((entry) => ({
+        id: entry.id,
+        action: entry.action,
+        entityType: entry.entityType,
+        metadata: entry.metadata,
+        createdAt: entry.createdAt,
+      })),
+    });
+  }),
+);
+
+transfersRouter.get(
+  "/:id/events",
+  asyncHandler(async (req, res) => {
+    const transfer = await getTransferById(req.user!.id, req.params.id);
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    const sendEvent = (event: TransferStatusEvent) => {
+      if (event.transferId !== transfer.id) {
+        return;
+      }
+      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    };
+
+    const initial: TransferStatusEvent = {
+      transferId: transfer.id,
+      reference: transfer.reference,
+      status: transfer.status as TransferStatusEvent["status"],
+      timestamp: new Date().toISOString(),
+    };
+    res.write(`data: ${JSON.stringify(initial)}\n\n`);
+
+    transferStatusBus.on(`transfer:${transfer.id}`, sendEvent);
+
+    req.on("close", () => {
+      transferStatusBus.off(`transfer:${transfer.id}`, sendEvent);
+    });
+  }),
+);
+
+transfersRouter.post(
+  "/:id/simulate-deposit",
+  asyncHandler(async (req, res) => {
+    const transfer = await simulateDeposit(req.user!.id, req.params.id);
+    sendOk(res, { transfer });
   }),
 );
 

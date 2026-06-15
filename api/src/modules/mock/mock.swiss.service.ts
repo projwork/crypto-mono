@@ -52,6 +52,33 @@ export const swissDepositConfirmation = async (
     throw AppError.notFound("Transfer not found for Swiss deposit confirmation");
   }
 
+  const { swissReference, receivedAmount } = await creditSwissDeposit(input);
+
+  await prisma.transfer.update({
+    where: { id: transfer.id },
+    data: { swissReference, status: "SWISS_FUNDS_RECEIVED" },
+  });
+
+  return {
+    success: true,
+    swissReference,
+    status: "FUNDS_RECEIVED",
+    receivedAmount,
+  };
+};
+
+/** Credits the Swiss pool without changing transfer status (Module 9 orchestrator). */
+export const creditSwissDeposit = async (
+  input: SwissDepositInput,
+): Promise<{ swissReference: string; receivedAmount: number }> => {
+  const transfer = await prisma.transfer.findFirst({
+    where: { reference: input.referenceId },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found for Swiss deposit confirmation");
+  }
+
   const receivedAmount = input.amount;
   const pool = await getSwissPool();
   const usdBalance = Number(pool.usdBalance) + receivedAmount;
@@ -74,18 +101,9 @@ export const swissDepositConfirmation = async (
         note: `Swiss deposit ${input.asset} ${swissReference}`,
       },
     }),
-    prisma.transfer.update({
-      where: { id: transfer.id },
-      data: { swissReference, status: "SWISS_FUNDS_RECEIVED" },
-    }),
   ]);
 
-  return {
-    success: true,
-    swissReference,
-    status: "FUNDS_RECEIVED",
-    receivedAmount,
-  };
+  return { swissReference, receivedAmount };
 };
 
 export const getSwissBalance = async (): Promise<SwissBalanceResponse> => {
