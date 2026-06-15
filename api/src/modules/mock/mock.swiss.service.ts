@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { LiquidityTransactionType, LiquidityPoolType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import { creditSwiss } from "../liquidity/liquidity.service.js";
 import type { SwissDepositInput, SwissWithdrawInput } from "./mock.schemas.js";
 
 const getSwissPool = async () => {
@@ -79,31 +80,16 @@ export const creditSwissDeposit = async (
     throw AppError.notFound("Transfer not found for Swiss deposit confirmation");
   }
 
-  const receivedAmount = input.amount;
-  const pool = await getSwissPool();
-  const usdBalance = Number(pool.usdBalance) + receivedAmount;
-  const incomingDeposits = Number(pool.incomingDeposits) + receivedAmount;
   const swissReference = genRef("SWISS");
 
-  await prisma.$transaction([
-    prisma.liquidityPool.update({
-      where: { id: pool.id },
-      data: { usdBalance, incomingDeposits },
-    }),
-    prisma.liquidityTransaction.create({
-      data: {
-        poolId: pool.id,
-        type: LiquidityTransactionType.CREDIT,
-        currency: "USD",
-        amount: receivedAmount,
-        balanceAfter: usdBalance,
-        referenceId: input.referenceId,
-        note: `Swiss deposit ${input.asset} ${swissReference}`,
-      },
-    }),
-  ]);
+  await creditSwiss({
+    amount: input.amount,
+    currency: "USD",
+    referenceId: input.referenceId,
+    note: `Swiss deposit ${input.asset} ${swissReference}`,
+  });
 
-  return { swissReference, receivedAmount };
+  return { swissReference, receivedAmount: input.amount };
 };
 
 export const getSwissBalance = async (): Promise<SwissBalanceResponse> => {
