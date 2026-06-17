@@ -6,19 +6,19 @@ interface KpiCardProps {
   value: string;
   hint?: string;
   icon?: ReactNode;
-  tone?: "default" | "emerald" | "sky" | "amber";
+  tone?: "default" | "indigo" | "sky" | "amber";
 }
 
 const toneStyles = {
   default: "from-slate-50 to-white dark:from-slate-900 dark:to-slate-950",
-  emerald: "from-emerald-50/80 to-white dark:from-emerald-500/10 dark:to-slate-950",
+  indigo: "from-indigo-50/80 to-white dark:from-indigo-500/10 dark:to-slate-950",
   sky: "from-sky-50/80 to-white dark:from-sky-500/10 dark:to-slate-950",
   amber: "from-amber-50/80 to-white dark:from-amber-500/10 dark:to-slate-950",
 };
 
 const iconStyles = {
   default: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400",
+  indigo: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400",
   sky: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400",
   amber: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400",
 };

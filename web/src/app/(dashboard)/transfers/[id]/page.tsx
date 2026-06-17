@@ -90,7 +90,7 @@ export default function TransferDetailPage({
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="font-medium text-slate-700 dark:text-slate-300">Recipient gets</dt>
-                  <dd className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                  <dd className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
                     {formatEtb(transfer.payoutEtb)}
                   </dd>
                 </div>
@@ -129,7 +129,7 @@ export default function TransferDetailPage({
             <CardTitle>Transaction timeline</CardTitle>
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
               <span
-                className={`h-2 w-2 rounded-full ${sseConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`}
+                className={`h-2 w-2 rounded-full ${sseConnected ? "bg-indigo-500 animate-pulse" : "bg-slate-300"}`}
               />
               {sseConnected ? "Live" : "Offline"}
             </span>

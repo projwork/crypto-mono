@@ -75,7 +75,7 @@ export function TransferDetailDrawer({
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-slate-500">Payout ETB</dt>
-            <dd className="font-semibold text-emerald-600">{formatEtb(transfer.payoutEtb)}</dd>
+            <dd className="font-semibold text-indigo-600">{formatEtb(transfer.payoutEtb)}</dd>
           </div>
           {transfer.txHash && (
             <div>

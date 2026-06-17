@@ -78,7 +78,7 @@ export default function AdminLiquidityPage() {
               label="Ethiopia liquidity pool"
               value={formatEtb(pools.pools.ethiopia.etbAvailable)}
               hint={`Reserved ${formatEtb(pools.pools.ethiopia.etbReserved)} · Disbursed ${formatEtb(pools.pools.ethiopia.etbDisbursed)} · Capacity ${formatEtb(pools.pools.ethiopia.etbCapacity)}`}
-              tone={pools.alerts.lowLiquidityWarning ? "amber" : "emerald"}
+              tone={pools.alerts.lowLiquidityWarning ? "amber" : "indigo"}
             />
           </div>
 

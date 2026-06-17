@@ -41,7 +41,7 @@ export function FileInput({
           "flex flex-col gap-2 rounded-xl border border-dashed p-4 transition-colors",
           error
             ? "border-rose-300 bg-rose-50/50 dark:border-rose-500/40 dark:bg-rose-500/5"
-            : "border-slate-200 bg-slate-50/50 hover:border-emerald-300 dark:border-slate-700 dark:bg-slate-900/50",
+            : "border-slate-200 bg-slate-50/50 hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900/50",
         )}
       >
         <input
@@ -55,7 +55,7 @@ export function FileInput({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             {fileName ? (
-              <p className="truncate text-sm font-medium text-emerald-700 dark:text-emerald-400">
+              <p className="truncate text-sm font-medium text-indigo-700 dark:text-indigo-400">
                 {fileName}
               </p>
             ) : existingUrl ? (
@@ -63,7 +63,7 @@ export function FileInput({
                 href={existingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-emerald-600 hover:underline dark:text-emerald-400"
+                className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
               >
                 View uploaded document
               </a>
