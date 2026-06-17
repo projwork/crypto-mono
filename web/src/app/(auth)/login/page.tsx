@@ -38,50 +38,77 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="mb-10 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
           Welcome back
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Sign in to manage your transfers and beneficiaries.
+        <p className="mt-3 text-slate-500 font-medium">
+          Securely access your DiasporaPay account.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <Alert tone="error">{error}</Alert>}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && <Alert tone="error">{error}</Alert>}
 
-        <Input
-          label="Email address"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <Input
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+          <Input
+            label="Email address"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="rounded-xl h-12"
+          />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+               <label className="text-sm font-semibold text-slate-700">Password</label>
+               <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-500">
+                 Forgot?
+               </button>
+            </div>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="rounded-xl h-12"
+            />
+          </div>
 
-        <Button type="submit" size="lg" className="w-full" loading={submitting}>
-          Sign in
-        </Button>
-      </form>
+          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2" loading={submitting}>
+            Sign In
+          </Button>
+        </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <div className="relative mt-8">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-slate-100" />
+          </div>
+          <div className="relative flex justify-center text-xs font-bold uppercase tracking-widest">
+            <span className="bg-white px-4 text-slate-400">or continue with</span>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <Link href="/metamask" className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 h-12 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+             <span className="text-lg">🦊</span>
+             Connect MetaMask
+          </Link>
+        </div>
+      </div>
+
+      <p className="mt-8 text-center text-sm font-medium text-slate-500">
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
-          className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+          className="font-bold text-indigo-600 hover:text-indigo-500"
         >
-          Create one
+          Create an account
         </Link>
       </p>
     </div>
