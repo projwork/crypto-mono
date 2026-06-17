@@ -109,7 +109,7 @@ function KycReviewDrawer({
               href={item.proofOfAddressUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-emerald-600 hover:underline"
+              className="text-sm text-indigo-600 hover:underline"
             >
               View document
             </a>
@@ -124,7 +124,7 @@ function KycReviewDrawer({
                   href={uploadUrl(doc.url)!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                  className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   {doc.label}
                 </a>

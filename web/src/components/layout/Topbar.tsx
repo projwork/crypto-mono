@@ -59,7 +59,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           </Badge>
         )}
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">
             {initials}
           </span>
           <div className="hidden text-right md:block">

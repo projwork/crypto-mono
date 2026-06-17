@@ -26,8 +26,8 @@ export function WizardStepper({ steps, current }: WizardStepperProps) {
                 <span
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                    done && "bg-emerald-600 text-white",
-                    active && !done && "bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400",
+                    done && "bg-indigo-600 text-white",
+                    active && !done && "bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-400",
                     !done && !active && "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500",
                   )}
                 >
@@ -52,7 +52,7 @@ export function WizardStepper({ steps, current }: WizardStepperProps) {
                 <div
                   className={cn(
                     "mx-2 hidden h-0.5 flex-1 sm:block",
-                    done ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-700",
+                    done ? "bg-indigo-500" : "bg-slate-200 dark:bg-slate-700",
                   )}
                 />
               )}

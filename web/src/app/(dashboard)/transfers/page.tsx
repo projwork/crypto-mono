@@ -94,7 +94,7 @@ export default function TransfersPage() {
                     <td className="px-5 py-4 whitespace-nowrap">
                       {formatAsset(t.sendAmount, t.asset)}
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                    <td className="px-5 py-4 whitespace-nowrap text-indigo-600 dark:text-indigo-400">
                       {formatEtb(t.payoutEtb)}
                     </td>
                     <td className="px-5 py-4">
@@ -106,7 +106,7 @@ export default function TransfersPage() {
                     <td className="px-5 py-4 text-right">
                       <Link
                         href={`/transfers/${t.id}`}
-                        className="text-sm font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
                       >
                         View
                       </Link>

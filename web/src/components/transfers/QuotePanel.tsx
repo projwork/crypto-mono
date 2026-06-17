@@ -19,14 +19,14 @@ export function QuotePanel({ quote, loading, error, className }: QuotePanelProps
         : null;
 
   return (
-    <Card className={cn("border-emerald-100 dark:border-emerald-500/20", className)}>
+    <Card className={cn("border-indigo-100 dark:border-indigo-500/20", className)}>
       <CardHeader>
         <CardTitle className="text-base">Live quote</CardTitle>
       </CardHeader>
       <CardContent>
         {loading && (
           <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
             Updating quote…
           </div>
         )}
@@ -43,11 +43,11 @@ export function QuotePanel({ quote, loading, error, className }: QuotePanelProps
 
         {!loading && !error && quote && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
+            <div className="rounded-xl bg-indigo-50 px-4 py-3 dark:bg-indigo-500/10">
               <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                 {formatAsset(quote.amount, quote.asset)}
               </p>
-              <p className="mt-1 text-lg text-emerald-700 dark:text-emerald-400">
+              <p className="mt-1 text-lg text-indigo-700 dark:text-indigo-400">
                 = {formatEtb(quote.grossEtb)}
               </p>
               {ratePer100 !== null && (
@@ -67,7 +67,7 @@ export function QuotePanel({ quote, loading, error, className }: QuotePanelProps
               </div>
               <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                 <dt className="font-medium text-slate-700 dark:text-slate-300">Recipient gets</dt>
-                <dd className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                <dd className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
                   {formatEtb(quote.payoutEtb)}
                 </dd>
               </div>

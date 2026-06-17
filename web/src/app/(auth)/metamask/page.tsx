@@ -66,7 +66,7 @@ export default function MetaMaskAuthPage() {
             <div className="h-24 w-24 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shadow-inner">
                <span className="text-5xl">🦊</span>
             </div>
-            <div className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-emerald-500 border-4 border-white flex items-center justify-center animate-pulse">
+            <div className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-indigo-500 border-4 border-white flex items-center justify-center animate-pulse">
                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 text-white">
                   <path d="m5 12 5 5 9-11" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
                </svg>

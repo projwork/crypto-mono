@@ -78,7 +78,7 @@ export default function AdminDashboardPage() {
               label="Total ETB paid"
               value={formatEtb(stats.totalEtbPaid)}
               hint="Completed payouts to recipients"
-              tone="emerald"
+              tone="indigo"
               icon={
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
                   <path d="M12 2v20M7 6l5-4 5 4M7 18l5 4 5-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
               label="Ethiopia liquidity balance"
               value={formatEtb(stats.ethiopiaLiquidity.etbAvailable)}
               hint={`${formatEtb(stats.ethiopiaLiquidity.etbReserved)} reserved · capacity ${formatEtb(stats.ethiopiaLiquidity.etbCapacity)}`}
-              tone={lowLiquidity ? "amber" : "emerald"}
+              tone={lowLiquidity ? "amber" : "indigo"}
               icon={
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
                   <path d="M3 3v18h18M7 14l4-4 4 4 6-8" strokeLinecap="round" strokeLinejoin="round" />

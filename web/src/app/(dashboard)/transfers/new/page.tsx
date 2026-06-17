@@ -213,7 +213,7 @@ export default function NewTransferPage() {
                       className={cn(
                         "rounded-xl border p-4 text-left transition-all",
                         selected
-                          ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20 dark:bg-emerald-500/10"
+                          ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20 dark:bg-indigo-500/10"
                           : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900",
                       )}
                     >
@@ -269,7 +269,7 @@ export default function NewTransferPage() {
                         className={cn(
                           "rounded-xl px-4 py-2 text-sm font-medium transition-colors",
                           asset === a
-                            ? "bg-emerald-600 text-white"
+                            ? "bg-indigo-600 text-white"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300",
                         )}
                       >
@@ -350,7 +350,7 @@ export default function NewTransferPage() {
                 </div>
                 <div className="flex justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
                   <dt className="font-medium">Recipient gets</dt>
-                  <dd className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                  <dd className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
                     {formatEtb(quote.payoutEtb)}
                   </dd>
                 </div>
@@ -417,7 +417,7 @@ export default function NewTransferPage() {
               <dl className="space-y-2 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Recipient gets</dt>
-                  <dd className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  <dd className="font-semibold text-indigo-600 dark:text-indigo-400">
                     {formatEtb(transfer.payoutEtb)}
                   </dd>
                 </div>

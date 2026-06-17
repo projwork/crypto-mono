@@ -41,8 +41,8 @@ export function Hero() {
             <div className="relative glass rounded-3xl p-8 shadow-2xl border border-white/40">
               <div className="flex items-center justify-between mb-8">
                 <span className="text-sm font-semibold text-slate-900">Live Exchange Rate</span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold ring-1 ring-inset ring-emerald-600/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold ring-1 ring-inset ring-indigo-600/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
                   Live Market
                 </span>
               </div>
