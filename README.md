@@ -7,7 +7,7 @@ A full-stack prototype for sending crypto from the diaspora and delivering Ethio
 | `apps/web` | Next.js 16, React 19, Tailwind CSS 4   | http://localhost:3000 |
 | `apps/api` | Node.js, Express, TypeScript, Prisma 6 | http://localhost:4000 |
 
-Shared contracts and module docs: [`CONTRACTS.md`](CONTRACTS.md) · Product spec: [`PRD.md`](PRD.md) · Build prompts: [`PROMPTS.md`](PROMPTS.md)
+Shared contracts and module docs: [`CONTRACTS.md`](CONTRACTS.md) ·
 
 ---
 
