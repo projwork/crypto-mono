@@ -1,5 +1,7 @@
 import {
   AssetType,
+  ConversionStatus,
+  ConversionType,
   KycStatus,
   TransferStatus,
   type Beneficiary,
@@ -9,15 +11,13 @@ import {
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
 import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
-import { fxService } from "../fx/fx.service.js";
+import {
+  getChfToEtbRate,
+  getCryptoToChfRate,
+} from "../conversions/conversions.service.js";
 import { getUserTransferLimit } from "../kyc/kyc.service.js";
 import { getOrCreateDepositAddress, toDepositAddress } from "../wallet/wallet.service.js";
-import {
-  computeUsdValue,
-  getCryptoToUsd,
-  getFeeCrypto,
-  getTransferFeeMode,
-} from "./transfers.pricing.js";
+import { getFeeCrypto } from "./transfers.pricing.js";
 import type { CreateTransferInput, TransferQuoteInput } from "./transfers.schemas.js";
 
 /** Full transfer quote — documented in CONTRACTS.md. */
@@ -25,16 +25,27 @@ export interface TransferQuote {
   asset: AssetType;
   amount: number;
   beneficiaryId: string;
+  cryptoToUsd: number;
   usdValue: number;
+  usdToChf: number;
+  chfAmount: number;
+  chfToEtb: number;
   usdToEtb: number;
   grossEtb: number;
   feeCrypto: number;
   feeEtb: number;
   payoutEtb: number;
+  rateSource: string;
   rateTimestamp: string;
 }
 
 export type PublicTransfer = ReturnType<typeof toPublicTransfer>;
+
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+const round8 = (value: number): number => Math.round(value * 100_000_000) / 100_000_000;
+
+const combineSources = (...sources: string[]): string =>
+  Array.from(new Set(sources.flatMap((source) => source.split(" + ")))).join(" + ");
 
 const getOwnedBeneficiary = async (
   userId: string,
@@ -58,23 +69,37 @@ const buildQuote = async (
   await getOwnedBeneficiary(userId, input.beneficiaryId);
 
   const feeCrypto = getFeeCrypto(input.asset, input.amount);
-  const fxQuote = await fxService.quote({
-    cryptoAmount: input.amount,
-    cryptoToUsd: getCryptoToUsd(input.asset),
-    feeMode: getTransferFeeMode(input.asset, input.amount),
-  });
+  const cryptoToChf = await getCryptoToChfRate(input.asset);
+  const chfToEtb = await getChfToEtbRate();
+
+  const usdValue = round2(input.amount * cryptoToChf.usdRate);
+  const chfAmount = round2(input.amount * cryptoToChf.chfRate);
+  const grossEtb = round2(chfAmount * chfToEtb.rate);
+  const feeEtb = round2(feeCrypto * cryptoToChf.chfRate * chfToEtb.rate);
+  const payoutEtb = round2(Math.max(0, grossEtb - feeEtb));
+  const rateTimestamp = new Date(
+    Math.max(
+      new Date(cryptoToChf.fetchedAt).getTime(),
+      new Date(chfToEtb.fetchedAt).getTime(),
+    ),
+  ).toISOString();
 
   return {
     asset: input.asset,
     amount: input.amount,
     beneficiaryId: input.beneficiaryId,
-    usdValue: computeUsdValue(input.asset, input.amount),
-    usdToEtb: fxQuote.usdToEtb,
-    grossEtb: fxQuote.grossEtb,
+    cryptoToUsd: cryptoToChf.usdRate,
+    usdValue,
+    usdToChf: cryptoToChf.usdToChf,
+    chfAmount,
+    chfToEtb: chfToEtb.rate,
+    usdToEtb: round8(cryptoToChf.usdToChf * chfToEtb.rate),
+    grossEtb,
     feeCrypto,
-    feeEtb: fxQuote.feeEtb,
-    payoutEtb: fxQuote.payoutEtb,
-    rateTimestamp: fxQuote.rateTimestamp,
+    feeEtb,
+    payoutEtb,
+    rateSource: combineSources(cryptoToChf.source, chfToEtb.source),
+    rateTimestamp,
   };
 };
 
@@ -112,11 +137,16 @@ export const toPublicTransfer = (transfer: TransferWithRelations) => ({
   asset: transfer.asset,
   sendAmount: transfer.sendAmount.toString(),
   feeCrypto: transfer.feeCrypto.toString(),
+  cryptoToUsd: transfer.cryptoToUsd?.toString() ?? null,
   usdValue: transfer.usdValue.toString(),
+  usdToChf: transfer.usdToChf?.toString() ?? null,
+  chfAmount: transfer.chfAmount?.toString() ?? null,
+  chfToEtb: transfer.chfToEtb?.toString() ?? null,
   usdToEtb: transfer.usdToEtb.toString(),
   grossEtb: transfer.grossEtb.toString(),
   feeEtb: transfer.feeEtb.toString(),
   payoutEtb: transfer.payoutEtb.toString(),
+  rateSource: transfer.rateSource,
   txHash: transfer.txHash,
   swissReference: transfer.swissReference,
   payoutReference: transfer.payoutReference,
@@ -151,23 +181,61 @@ export const createTransfer = async (userId: string, input: CreateTransferInput)
 
   const reference = await generateReference();
 
-  const transfer = await prisma.transfer.create({
-    data: {
-      reference,
-      senderId: userId,
-      beneficiaryId: quote.beneficiaryId,
-      asset: quote.asset,
-      sendAmount: quote.amount,
-      feeCrypto: quote.feeCrypto,
-      usdValue: quote.usdValue,
-      usdToEtb: quote.usdToEtb,
-      grossEtb: quote.grossEtb,
-      feeEtb: quote.feeEtb,
-      payoutEtb: quote.payoutEtb,
-      status: TransferStatus.INITIATED,
-      rateTimestamp: new Date(quote.rateTimestamp),
-    },
-    include: transferInclude,
+  const transfer = await prisma.$transaction(async (tx) => {
+    const created = await tx.transfer.create({
+      data: {
+        reference,
+        senderId: userId,
+        beneficiaryId: quote.beneficiaryId,
+        asset: quote.asset,
+        sendAmount: quote.amount,
+        feeCrypto: quote.feeCrypto,
+        cryptoToUsd: quote.cryptoToUsd,
+        usdValue: quote.usdValue,
+        usdToChf: quote.usdToChf,
+        chfAmount: quote.chfAmount,
+        chfToEtb: quote.chfToEtb,
+        usdToEtb: quote.usdToEtb,
+        grossEtb: quote.grossEtb,
+        feeEtb: quote.feeEtb,
+        payoutEtb: quote.payoutEtb,
+        rateSource: quote.rateSource,
+        status: TransferStatus.INITIATED,
+        rateTimestamp: new Date(quote.rateTimestamp),
+      },
+      include: transferInclude,
+    });
+
+    await tx.conversion.createMany({
+      data: [
+        {
+          transferId: created.id,
+          type: ConversionType.CRYPTO_TO_CHF,
+          status: ConversionStatus.COMPLETED,
+          fromCurrency: quote.asset,
+          toCurrency: "CHF",
+          fromAmount: quote.amount,
+          toAmount: quote.chfAmount,
+          rate: quote.cryptoToUsd * quote.usdToChf,
+          source: quote.rateSource,
+          fetchedAt: new Date(quote.rateTimestamp),
+        },
+        {
+          transferId: created.id,
+          type: ConversionType.CHF_TO_ETB,
+          status: ConversionStatus.COMPLETED,
+          fromCurrency: "CHF",
+          toCurrency: "ETB",
+          fromAmount: quote.chfAmount,
+          toAmount: quote.grossEtb,
+          rate: quote.chfToEtb,
+          source: quote.rateSource,
+          fetchedAt: new Date(quote.rateTimestamp),
+        },
+      ],
+    });
+
+    return created;
   });
 
   await getOrCreateDepositAddress(userId, transfer.id, quote.asset);

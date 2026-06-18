@@ -23,6 +23,8 @@ export interface CryptoUsdPrice {
   fetchedAt: Date;
 }
 
+const priceCache = new Map<AssetType, CryptoUsdPrice & { expiresAt: number }>();
+
 const fetchJson = async <T>(url: string, headers: Record<string, string>): Promise<T> => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.conversions.requestTimeoutMs);
@@ -44,6 +46,12 @@ const fetchJson = async <T>(url: string, headers: Record<string, string>): Promi
 };
 
 export const getCryptoUsdPrice = async (asset: AssetType): Promise<CryptoUsdPrice> => {
+  const now = Date.now();
+  const cached = priceCache.get(asset);
+  if (cached && cached.expiresAt > now) {
+    return cached;
+  }
+
   const id = COINGECKO_IDS[asset];
   const url = new URL(COINGECKO_SIMPLE_PRICE_URL);
   url.searchParams.set("ids", id);
@@ -65,7 +73,7 @@ export const getCryptoUsdPrice = async (asset: AssetType): Promise<CryptoUsdPric
       throw AppError.badRequest(`CoinGecko did not return a USD price for ${asset}`);
     }
 
-    return {
+    const priceResult = {
       asset,
       usdRate: price,
       source: "CoinGecko",
@@ -73,15 +81,25 @@ export const getCryptoUsdPrice = async (asset: AssetType): Promise<CryptoUsdPric
         ? new Date(json[id].last_updated_at * 1000)
         : new Date(),
     };
+    priceCache.set(asset, {
+      ...priceResult,
+      expiresAt: now + config.conversions.rateCacheTtlMs,
+    });
+    return priceResult;
   } catch (error) {
     const fallback = STABLECOIN_USD_FALLBACK[asset];
     if (fallback) {
-      return {
+      const fallbackResult = {
         asset,
         usdRate: fallback,
         source: asset === AssetType.ETH ? "MOCK_ETH_FALLBACK" : "STABLECOIN_FALLBACK",
         fetchedAt: new Date(),
       };
+      priceCache.set(asset, {
+        ...fallbackResult,
+        expiresAt: now + config.conversions.rateCacheTtlMs,
+      });
+      return fallbackResult;
     }
     throw error;
   }

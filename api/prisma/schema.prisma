@@ -213,11 +213,16 @@ model Transfer {
   asset           AssetType
   sendAmount      Decimal        @db.Decimal(38, 18)
   feeCrypto       Decimal        @default(0) @db.Decimal(38, 18)
+  cryptoToUsd     Decimal?       @db.Decimal(20, 8)
   usdValue        Decimal        @db.Decimal(20, 2)
+  usdToChf        Decimal?       @db.Decimal(20, 8)
+  chfAmount       Decimal?       @db.Decimal(20, 2)
+  chfToEtb        Decimal?       @db.Decimal(20, 8)
   usdToEtb        Decimal        @db.Decimal(20, 6)
   grossEtb        Decimal        @db.Decimal(20, 2)
   feeEtb          Decimal        @default(0) @db.Decimal(20, 2)
   payoutEtb       Decimal        @db.Decimal(20, 2)
+  rateSource      String?
   status          TransferStatus @default(INITIATED)
   txHash          String?
   swissReference  String?

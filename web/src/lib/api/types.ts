@@ -147,12 +147,17 @@ export interface TransferQuote {
   asset: AssetType;
   amount: number;
   beneficiaryId: string;
+  cryptoToUsd: number;
   usdValue: number;
+  usdToChf: number;
+  chfAmount: number;
+  chfToEtb: number;
   usdToEtb: number;
   grossEtb: number;
   feeCrypto: number;
   feeEtb: number;
   payoutEtb: number;
+  rateSource: string;
   rateTimestamp: string;
 }
 
@@ -186,11 +191,16 @@ export interface PublicTransfer {
   asset: AssetType;
   sendAmount: string;
   feeCrypto: string;
+  cryptoToUsd: string | null;
   usdValue: string;
+  usdToChf: string | null;
+  chfAmount: string | null;
+  chfToEtb: string | null;
   usdToEtb: string;
   grossEtb: string;
   feeEtb: string;
   payoutEtb: string;
+  rateSource: string | null;
   txHash: string | null;
   swissReference: string | null;
   payoutReference: string | null;
