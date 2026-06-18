@@ -538,6 +538,17 @@ under `providers/` so external API changes do not leak into transfer/orchestrati
 - `POST /chf-to-etb` (auth) body `{ transferId, chfAmount }`
   → `{ transferId, chfAmount, rate, etbAmount, source, convertedAt }`.
 
+**Conversion visibility endpoints:**
+- `GET /api/transfers/:id/conversion-status` (auth, owner only) →
+  `{ conversionStatus: { transferId, reference, transferStatus, asset, sendAmount, payoutEtb,
+  rateSource, rateTimestamp, cryptoToChf, chfToEtb } }`.
+- Each conversion contains `{ id, transferId, type, status, fromCurrency, toCurrency, fromAmount,
+  toAmount, rate, source, fetchedAt, createdAt, updatedAt }`; decimal values are strings.
+- `GET /api/admin/conversions` (admin) supports `transferId`, `type`, `status`, `source`, `asset`,
+  `dateFrom`, `dateTo`, and `limit` filters. Returns conversion rows with transfer, sender, and
+  beneficiary context.
+- `GET /api/admin/conversions/:id` (admin) returns one conversion with the same related context.
+
 **Authoritative settlement integration:**
 - `POST /api/transfers/quote` uses live conversion-provider rates.
 - Transfer creation stores the accepted crypto/USD, USD/CHF, CHF amount, CHF/ETB, ETB amounts,

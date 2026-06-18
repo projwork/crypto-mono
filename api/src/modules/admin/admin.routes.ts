@@ -5,6 +5,11 @@ import { sendOk } from "../../lib/apiResponse.js";
 import { logEvent, listAuditEntries } from "../audit/audit.service.js";
 import { updateFxRateSchema } from "../fx/fx.schemas.js";
 import { fxService } from "../fx/fx.service.js";
+import { adminConversionListSchema } from "../conversions/conversions.schemas.js";
+import {
+  getAdminConversion,
+  listAdminConversions,
+} from "../conversions/conversions.service.js";
 import { getAdminStats } from "./admin.stats.service.js";
 import {
   adminOverrideTransferSchema,
@@ -44,6 +49,23 @@ adminRouter.post(
       timestamp: rate.timestamp.toISOString(),
       source: rate.source,
     }, 201);
+  }),
+);
+
+adminRouter.get(
+  "/conversions",
+  asyncHandler(async (req, res) => {
+    const filters = adminConversionListSchema.parse(req.query);
+    const conversions = await listAdminConversions(filters);
+    sendOk(res, { conversions });
+  }),
+);
+
+adminRouter.get(
+  "/conversions/:id",
+  asyncHandler(async (req, res) => {
+    const conversion = await getAdminConversion(req.params.id);
+    sendOk(res, { conversion });
   }),
 );
 
@@ -99,6 +121,14 @@ adminRouter.get(
 adminRouter.get("/", (_req, res) => {
   sendOk(res, {
     module: "admin",
-    endpoints: ["GET /stats", "GET /transfers", "POST /transfers/:id/override", "POST /fx-rate", "GET /audit"],
+    endpoints: [
+      "GET /stats",
+      "GET /transfers",
+      "POST /transfers/:id/override",
+      "GET /conversions",
+      "GET /conversions/:id",
+      "POST /fx-rate",
+      "GET /audit",
+    ],
   });
 });

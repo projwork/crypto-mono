@@ -3,6 +3,7 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { sendOk } from "../../lib/apiResponse.js";
 import { getTransferTimeline } from "../audit/audit.service.js";
+import { getTransferConversionStatus } from "../conversions/conversions.service.js";
 import { createTransferSchema, transferQuoteSchema } from "./transfers.schemas.js";
 import {
   createTransfer,
@@ -51,6 +52,17 @@ transfersRouter.get(
   asyncHandler(async (req, res) => {
     const transfers = await listMyTransfers(req.user!.id);
     sendOk(res, { transfers });
+  }),
+);
+
+transfersRouter.get(
+  "/:id/conversion-status",
+  asyncHandler(async (req, res) => {
+    const conversionStatus = await getTransferConversionStatus(
+      req.user!.id,
+      req.params.id,
+    );
+    sendOk(res, { conversionStatus });
   }),
 );
 

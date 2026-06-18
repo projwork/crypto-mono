@@ -2,11 +2,14 @@ import {
   AssetType,
   ConversionStatus,
   ConversionType,
+  type Conversion,
+  type Prisma,
   type Role,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
 import type { ChfToEtbInput, CryptoToChfInput } from "./conversions.schemas.js";
+import type { AdminConversionListQuery } from "./conversions.schemas.js";
 import { getCryptoUsdPrice } from "./providers/cryptoPrice.provider.js";
 import { getFiatRateSnapshot } from "./providers/fiatRate.provider.js";
 
@@ -52,6 +55,22 @@ export interface ChfToEtbConversion {
 }
 
 const sourceLabel = (...sources: string[]): string => Array.from(new Set(sources)).join(" + ");
+
+export const toPublicConversion = (conversion: Conversion) => ({
+  id: conversion.id,
+  transferId: conversion.transferId,
+  type: conversion.type,
+  status: conversion.status,
+  fromCurrency: conversion.fromCurrency,
+  toCurrency: conversion.toCurrency,
+  fromAmount: conversion.fromAmount.toString(),
+  toAmount: conversion.toAmount.toString(),
+  rate: conversion.rate.toString(),
+  source: conversion.source,
+  fetchedAt: conversion.fetchedAt,
+  createdAt: conversion.createdAt,
+  updatedAt: conversion.updatedAt,
+});
 
 const assertTransferAccess = async (
   transferId: string,
@@ -273,9 +292,146 @@ export const convertChfToEtb = async (
   };
 };
 
+export const getTransferConversionStatus = async (
+  userId: string,
+  transferId: string,
+) => {
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: transferId, senderId: userId },
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      asset: true,
+      sendAmount: true,
+      payoutEtb: true,
+      rateSource: true,
+      rateTimestamp: true,
+      conversions: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  const conversions = transfer.conversions.map(toPublicConversion);
+
+  return {
+    transferId: transfer.id,
+    reference: transfer.reference,
+    transferStatus: transfer.status,
+    asset: transfer.asset,
+    sendAmount: transfer.sendAmount.toString(),
+    payoutEtb: transfer.payoutEtb.toString(),
+    rateSource: transfer.rateSource,
+    rateTimestamp: transfer.rateTimestamp,
+    cryptoToChf:
+      conversions.find((conversion) => conversion.type === ConversionType.CRYPTO_TO_CHF) ?? null,
+    chfToEtb:
+      conversions.find((conversion) => conversion.type === ConversionType.CHF_TO_ETB) ?? null,
+  };
+};
+
+const adminConversionInclude = {
+  transfer: {
+    select: {
+      id: true,
+      reference: true,
+      status: true,
+      asset: true,
+      sendAmount: true,
+      payoutEtb: true,
+      sender: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+      beneficiary: {
+        select: {
+          id: true,
+          fullName: true,
+          payoutMethod: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.ConversionInclude;
+
+const toAdminConversion = (
+  conversion: Prisma.ConversionGetPayload<{ include: typeof adminConversionInclude }>,
+) => ({
+  ...toPublicConversion(conversion),
+  transfer: {
+    id: conversion.transfer.id,
+    reference: conversion.transfer.reference,
+    status: conversion.transfer.status,
+    asset: conversion.transfer.asset,
+    sendAmount: conversion.transfer.sendAmount.toString(),
+    payoutEtb: conversion.transfer.payoutEtb.toString(),
+    sender: {
+      id: conversion.transfer.sender.id,
+      name: `${conversion.transfer.sender.firstName} ${conversion.transfer.sender.lastName}`,
+      email: conversion.transfer.sender.email,
+    },
+    beneficiary: conversion.transfer.beneficiary,
+  },
+});
+
+export const listAdminConversions = async (
+  filters: AdminConversionListQuery,
+) => {
+  const where: Prisma.ConversionWhereInput = {
+    transferId: filters.transferId,
+    type: filters.type,
+    status: filters.status,
+    source: filters.source
+      ? { contains: filters.source, mode: "insensitive" }
+      : undefined,
+    fromCurrency: filters.asset,
+    createdAt:
+      filters.dateFrom || filters.dateTo
+        ? {
+            gte: filters.dateFrom,
+            lte: filters.dateTo,
+          }
+        : undefined,
+  };
+
+  const conversions = await prisma.conversion.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: filters.limit,
+    include: adminConversionInclude,
+  });
+
+  return conversions.map(toAdminConversion);
+};
+
+export const getAdminConversion = async (conversionId: string) => {
+  const conversion = await prisma.conversion.findUnique({
+    where: { id: conversionId },
+    include: adminConversionInclude,
+  });
+
+  if (!conversion) {
+    throw AppError.notFound("Conversion not found");
+  }
+
+  return toAdminConversion(conversion);
+};
+
 export const conversionService = {
   getCryptoToChfRate,
   getChfToEtbRate,
   convertCryptoToChf,
   convertChfToEtb,
+  getTransferConversionStatus,
+  listAdminConversions,
+  getAdminConversion,
 };
