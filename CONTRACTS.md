@@ -62,6 +62,7 @@ Base URL: `http://localhost:4000`
 | `/uploads/*` | 3 | static-served uploaded files (e.g. KYC docs) |
 | `/api/beneficiaries` | 4 | CRUD + favorite toggle (auth required) |
 | `/api/wallet` | 6 | deposit address / instructions |
+| `/api/conversions` | 14 | crypto→CHF and CHF→ETB rate/conversion snapshots |
 | `/api/transfers` | 8, 9 | quote, create, list, detail, timeline, events (SSE), simulate-deposit |
 | `/api/liquidity` | 10 | pools, ledger (admin) |
 | `/api/notifications` | 11 | list, mark read |
@@ -504,5 +505,35 @@ Timeline merges initial audit log + SSE events; steps show completed / in-progre
   with shared `TransferDetailDrawer` override (reverse / force complete).
 
 **Shared:** `TransferDetailDrawer` extracted for transactions + controls pages.
+
+### Module 14 — Conversion service (DONE — Backend)
+
+Files: `apps/api/src/modules/conversions/*`. The module adds explicit conversion snapshots for the
+new Swiss liquidity flow while preserving the existing transfer quote fields. Providers are isolated
+under `providers/` so external API changes do not leak into transfer/orchestration code.
+
+**Providers:**
+- Crypto prices: CoinGecko simple price (`COINGECKO_DEMO_API_KEY` optional). Prototype fallbacks:
+  USDC/USDT = 1 USD, ETH = 3500 USD.
+- Fiat rates: ExchangeRate-API open endpoint (`USD` base). If unavailable, falls back to the latest
+  local `ExchangeRate` row (`usdToEtb`, `chfToEtb`) and derives `usdToChf = usdToEtb / chfToEtb`.
+- Config: `CONVERSION_RATE_CACHE_TTL_MS` (default 60000), `CONVERSION_REQUEST_TIMEOUT_MS`
+  (default 8000).
+
+**Prisma:** New `Conversion` model with unique `(transferId, type)` and enums:
+- `ConversionType`: `CRYPTO_TO_CHF`, `CHF_TO_ETB`
+- `ConversionStatus`: `PENDING`, `COMPLETED`, `FAILED`
+
+**Endpoints** (`/api/conversions`):
+- `GET /crypto-to-chf/rate?asset=USDC` → `{ asset, usdRate, usdToChf, chfRate, source, fetchedAt }`.
+- `POST /crypto-to-chf` (auth) body `{ transferId, asset, cryptoAmount }`
+  → `{ transferId, asset, cryptoAmount, marketRate, chfAmount, source, convertedAt }`.
+- `GET /chf-to-etb/rate` → `{ from: "CHF", to: "ETB", rate, usdToChf, usdToEtb, source, fetchedAt }`.
+- `POST /chf-to-etb` (auth) body `{ transferId, chfAmount }`
+  → `{ transferId, chfAmount, rate, etbAmount, source, convertedAt }`.
+
+**Orchestrator integration:** `POST /api/transfers/:id/simulate-deposit` now records
+`CRYPTO_TO_CHF` and `CHF_TO_ETB` conversion snapshots before transitioning to `FX_CONVERTED`.
+Liquidity reserve/disbursement remains owned by Module 10 to avoid double-reserving ETB.
 
 
