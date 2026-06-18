@@ -75,17 +75,25 @@ export const toPublicConversion = (conversion: Conversion) => ({
 const assertTransferAccess = async (
   transferId: string,
   user: { id: string; role: Role },
+  findTransfer: (transferId: string) => Promise<{
+    id: string;
+    senderId: string;
+    reference: string;
+    asset: AssetType;
+    sendAmount: { toString(): string };
+  } | null> = async (id) =>
+    prisma.transfer.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        senderId: true,
+        reference: true,
+        asset: true,
+        sendAmount: true,
+      },
+    }),
 ) => {
-  const transfer = await prisma.transfer.findUnique({
-    where: { id: transferId },
-    select: {
-      id: true,
-      senderId: true,
-      reference: true,
-      asset: true,
-      sendAmount: true,
-    },
-  });
+  const transfer = await findTransfer(transferId);
 
   if (!transfer) {
     throw AppError.notFound("Transfer not found");
@@ -131,8 +139,22 @@ export const getChfToEtbRate = async (): Promise<ChfToEtbRate> => {
 export const convertCryptoToChf = async (
   user: { id: string; role: Role },
   input: CryptoToChfInput,
+  dependencies: {
+    findTransfer?: Parameters<typeof assertTransferAccess>[2];
+    findConversion?: (
+      args: Prisma.ConversionFindUniqueArgs,
+    ) => Promise<Conversion | null>;
+    upsertConversion?: (
+      args: Prisma.ConversionUpsertArgs,
+    ) => Promise<Conversion>;
+    getRate?: typeof getCryptoToChfRate;
+  } = {},
 ): Promise<CryptoToChfConversion> => {
-  const transfer = await assertTransferAccess(input.transferId, user);
+  const transfer = await assertTransferAccess(
+    input.transferId,
+    user,
+    dependencies.findTransfer,
+  );
   if (transfer.asset !== input.asset) {
     throw AppError.badRequest("Conversion asset must match the transfer asset");
   }
@@ -142,7 +164,11 @@ export const convertCryptoToChf = async (
     throw AppError.badRequest("cryptoAmount must match the transfer send amount");
   }
 
-  const existing = await prisma.conversion.findUnique({
+  const findConversion =
+    dependencies.findConversion ??
+    ((args: Prisma.ConversionFindUniqueArgs) =>
+      prisma.conversion.findUnique(args));
+  const existing = await findConversion({
     where: {
       transferId_type: {
         transferId: transfer.id,
@@ -163,11 +189,15 @@ export const convertCryptoToChf = async (
     };
   }
 
-  const rate = await getCryptoToChfRate(input.asset);
+  const rate = await (dependencies.getRate ?? getCryptoToChfRate)(input.asset);
   const chfAmount = round2(input.cryptoAmount * rate.chfRate);
   const convertedAt = new Date();
 
-  await prisma.conversion.upsert({
+  const upsertConversion =
+    dependencies.upsertConversion ??
+    ((args: Prisma.ConversionUpsertArgs) =>
+      prisma.conversion.upsert(args));
+  await upsertConversion({
     where: {
       transferId_type: {
         transferId: transfer.id,
@@ -292,11 +322,11 @@ export const convertChfToEtb = async (
   };
 };
 
-export const getTransferConversionStatus = async (
+const findOwnedTransferConversionStatus = async (
   userId: string,
   transferId: string,
-) => {
-  const transfer = await prisma.transfer.findFirst({
+) =>
+  prisma.transfer.findFirst({
     where: { id: transferId, senderId: userId },
     select: {
       id: true,
@@ -312,6 +342,14 @@ export const getTransferConversionStatus = async (
       },
     },
   });
+
+export const getTransferConversionStatus = async (
+  userId: string,
+  transferId: string,
+  findTransfer: typeof findOwnedTransferConversionStatus =
+    findOwnedTransferConversionStatus,
+) => {
+  const transfer = await findTransfer(userId, transferId);
 
   if (!transfer) {
     throw AppError.notFound("Transfer not found");

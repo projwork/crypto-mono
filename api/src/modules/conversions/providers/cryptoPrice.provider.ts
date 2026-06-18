@@ -104,3 +104,7 @@ export const getCryptoUsdPrice = async (asset: AssetType): Promise<CryptoUsdPric
     throw error;
   }
 };
+
+export const clearCryptoPriceCache = (): void => {
+  priceCache.clear();
+};
