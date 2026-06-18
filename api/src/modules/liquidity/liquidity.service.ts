@@ -102,7 +102,10 @@ export const creditSwiss = async (input: {
 };
 
 /** Reserve ETB for an in-flight payout. */
-export const reserveEtb = async (amount: number, referenceId: string): Promise<void> => {
+export const reserveEtb = async (
+  amount: number,
+  referenceId: string,
+): Promise<void> => {
   const pool = await getEthiopiaPool();
   const available = Number(pool.etbAvailable);
   const reserved = Number(pool.etbReserved);
@@ -133,7 +136,10 @@ export const reserveEtb = async (amount: number, referenceId: string): Promise<v
 };
 
 /** Release reserved ETB after a failed payout. */
-export const releaseEtb = async (amount: number, referenceId: string): Promise<void> => {
+export const releaseEtb = async (
+  amount: number,
+  referenceId: string,
+): Promise<void> => {
   const pool = await getEthiopiaPool();
   const available = Number(pool.etbAvailable);
   const reserved = Number(pool.etbReserved);
@@ -159,7 +165,10 @@ export const releaseEtb = async (amount: number, referenceId: string): Promise<v
 };
 
 /** Disburse reserved ETB on successful payout. */
-export const disburseEtb = async (amount: number, referenceId: string): Promise<void> => {
+export const disburseEtb = async (
+  amount: number,
+  referenceId: string,
+): Promise<void> => {
   const pool = await getEthiopiaPool();
   const reserved = Number(pool.etbReserved);
   const disbursed = Number(pool.etbDisbursed);
@@ -184,6 +193,30 @@ export const disburseEtb = async (amount: number, referenceId: string): Promise<
   ]);
 };
 
+/** Reserve CHF liquidity for a conversion */
+export const reserveChf = async (
+  amount: number,
+  referenceId: string,
+): Promise<void> => {
+  const pool = await getSwissPool();
+  const available = Number(pool.chfBalance);
+
+  if (available < amount) {
+    throw AppError.badRequest("Insufficient CHF liquidity available");
+  }
+
+  await prisma.liquidityTransaction.create({
+    data: ledgerData(pool.id, {
+      type: LiquidityTransactionType.RESERVE,
+      currency: "CHF",
+      amount,
+      balanceAfter: available - amount,
+      referenceId,
+      note: "CHF reserved for conversion",
+    }),
+  });
+};
+
 const ledgerData = (poolId: string, input: Omit<LedgerInput, "poolId">) => ({
   poolId,
   type: input.type,
@@ -199,7 +232,9 @@ export interface LiquidityAlert {
   reasons: string[];
 }
 
-export const evaluateLowLiquidityAlert = (pool: LiquidityPool): LiquidityAlert => {
+export const evaluateLowLiquidityAlert = (
+  pool: LiquidityPool,
+): LiquidityAlert => {
   const available = Number(pool.etbAvailable);
   const capacity = Number(pool.etbCapacity);
   const reasons: string[] = [];
@@ -221,7 +256,10 @@ export const evaluateLowLiquidityAlert = (pool: LiquidityPool): LiquidityAlert =
 };
 
 export const getPoolsSnapshot = async () => {
-  const [swiss, ethiopia] = await Promise.all([getSwissPool(), getEthiopiaPool()]);
+  const [swiss, ethiopia] = await Promise.all([
+    getSwissPool(),
+    getEthiopiaPool(),
+  ]);
   const alerts = evaluateLowLiquidityAlert(ethiopia);
 
   return {
@@ -271,6 +309,7 @@ export const getLiquidityLedger = async (limit = 100) => {
 export const liquidityService = {
   creditSwiss,
   reserveEtb,
+  reserveChf,
   releaseEtb,
   disburseEtb,
   getPoolsSnapshot,
