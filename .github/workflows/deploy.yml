@@ -1,13 +1,14 @@
-# CI gate for the crypto-remittance monorepo.
+# CI gate and Deploy for the crypto-remittance monorepo.
 #
-# This workflow ONLY builds/typechecks both apps on every push and PR to main.
-# It does NOT deploy: Render handles deployment automatically because both
-# services have `autoDeploy: true` in render.yaml. When you merge to main, the
-# CI here must pass, and Render independently rebuilds and redeploys.
+# This workflow builds/typechecks both apps on every push and PR to main.
+# When a PR is merged into main (push to main), it also triggers a deployment
+# on Render by calling the Render Deploy Hooks.
 #
-# No repository secrets are required for this workflow.
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   RENDER_DEPLOY_HOOK_API  -> deploy hook URL of the API service
+#   RENDER_DEPLOY_HOOK_WEB  -> deploy hook URL of the web service
 
-name: CI
+name: CI and Deploy to Render
 
 on:
   push:
@@ -40,3 +41,15 @@ jobs:
         run: |
           npm install --include=dev
           npm run build
+
+  deploy:
+    name: Trigger Render deploys
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy API
+        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
+
+      - name: Deploy Web
+        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"

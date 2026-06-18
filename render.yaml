@@ -36,7 +36,7 @@ services:
     rootDir: api
     region: frankfurt
     branch: main
-    autoDeploy: true
+    autoDeploy: false
     healthCheckPath: /health
     # --include=dev is REQUIRED: prisma, typescript and tsx live in
     # devDependencies, and NODE_ENV=production would otherwise skip them.
@@ -84,7 +84,7 @@ services:
     rootDir: web
     region: frankfurt
     branch: main
-    autoDeploy: true
+    autoDeploy: false
     # NEXT_PUBLIC_* vars are inlined at BUILD time, so the API URL must be present
     # before "npm run build" runs (it is, because envVars are set first).
     buildCommand: npm install --include=dev && npm run build
