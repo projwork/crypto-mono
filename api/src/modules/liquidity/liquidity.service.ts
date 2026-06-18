@@ -306,6 +306,45 @@ export const getLiquidityLedger = async (limit = 100) => {
   }));
 };
 
+// Add topup functions for admin
+export const topupChfLiquidity = async (amount: number, reference: string) => {
+  const pool = await getSwissPool();
+  const updatedPool = await prisma.liquidityPool.update({
+    where: { id: pool.id },
+    data: { chfBalance: { increment: amount } },
+  });
+  await prisma.liquidityTransaction.create({
+    data: ledgerData(pool.id, {
+      type: LiquidityTransactionType.CREDIT,
+      currency: "CHF",
+      amount,
+      balanceAfter: Number(updatedPool.chfBalance),
+      referenceId: reference,
+      note: "CHF liquidity topup",
+    }),
+  });
+  return { chfBalance: Number(updatedPool.chfBalance) };
+};
+
+export const topupEtbLiquidity = async (amount: number, reference: string) => {
+  const pool = await getEthiopiaPool();
+  const updatedPool = await prisma.liquidityPool.update({
+    where: { id: pool.id },
+    data: { etbAvailable: { increment: amount } },
+  });
+  await prisma.liquidityTransaction.create({
+    data: ledgerData(pool.id, {
+      type: LiquidityTransactionType.CREDIT,
+      currency: "ETB",
+      amount,
+      balanceAfter: Number(updatedPool.etbAvailable),
+      referenceId: reference,
+      note: "ETB liquidity topup",
+    }),
+  });
+  return { etbAvailable: Number(updatedPool.etbAvailable) };
+};
+
 export const liquidityService = {
   creditSwiss,
   reserveEtb,
@@ -315,4 +354,6 @@ export const liquidityService = {
   getPoolsSnapshot,
   getLiquidityLedger,
   evaluateLowLiquidityAlert,
+  topupChfLiquidity,
+  topupEtbLiquidity,
 };

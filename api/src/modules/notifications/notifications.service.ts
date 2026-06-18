@@ -6,6 +6,7 @@ import { AppError } from "../../lib/apiResponse.js";
 export const toPublicNotification = (notification: Notification) => ({
   id: notification.id,
   type: notification.type,
+  title: notification.title,
   message: notification.message,
   data: notification.data,
   transferId: notification.transferId,
@@ -18,6 +19,7 @@ export type PublicNotification = ReturnType<typeof toPublicNotification>;
 export const notify = async (input: {
   userId: string;
   type?: NotificationType;
+  title?: string;
   message: string;
   transferId?: string;
   data?: Record<string, unknown>;
@@ -26,6 +28,7 @@ export const notify = async (input: {
     data: {
       userId: input.userId,
       type: input.type ?? NotificationType.TRANSFER_UPDATE,
+      title: input.title ?? "Notification",
       message: input.message,
       transferId: input.transferId ?? null,
       data: (input.data ?? undefined) as Prisma.InputJsonValue | undefined,
@@ -43,7 +46,10 @@ export const listMyNotifications = async (userId: string, limit = 50) => {
   return notifications.map(toPublicNotification);
 };
 
-export const markNotificationRead = async (userId: string, notificationId: string) => {
+export const markNotificationRead = async (
+  userId: string,
+  notificationId: string,
+) => {
   const notification = await prisma.notification.findFirst({
     where: { id: notificationId, userId },
   });
