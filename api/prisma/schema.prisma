@@ -92,6 +92,8 @@ enum ChainType {
   POLYGON
   ARBITRUM
   OPTIMISM
+}
+
 enum ConversionType {
   CRYPTO_TO_CHF
   CHF_TO_ETB
@@ -256,12 +258,8 @@ model Transfer {
   sender        User           @relation(fields: [senderId], references: [id])
   beneficiary   Beneficiary    @relation(fields: [beneficiaryId], references: [id])
   wallet        Wallet?
+  conversions   Conversion[]
   auditLogs     AuditLog[]
-  sender      User          @relation(fields: [senderId], references: [id])
-  beneficiary Beneficiary   @relation(fields: [beneficiaryId], references: [id])
-  wallet      Wallet?
-  conversions Conversion[]
-  auditLogs   AuditLog[]
   notifications Notification[]
 
   @@index([senderId])
