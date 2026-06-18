@@ -34,8 +34,10 @@ services:
     # --include=dev is REQUIRED: prisma, typescript and tsx live in
     # devDependencies, and NODE_ENV=production would otherwise skip them.
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    # migrate deploy runs every boot (idempotent) so the DB schema stays in sync.
-    startCommand: npx prisma migrate deploy && npm run start
+    # migrate deploy keeps the schema in sync; seed is idempotent (upserts) so it
+    # is safe to run on every boot and ensures demo users/data always exist.
+    # Seed is non-blocking (|| true) so a seeding hiccup never stops the API boot.
+    startCommand: npx prisma migrate deploy && (npm run seed || true) && npm run start
     envVars:
       - key: NODE_VERSION
         value: "22.14.0"
