@@ -1,16 +1,13 @@
-# Optional CI gate + deploy for Render.
+# CI gate for the crypto-remittance monorepo.
 #
-# Use this ONLY if you want tests/build to pass BEFORE deploying (Option 2 in
-# DEPLOYMENT.md). If you use it, turn OFF Render auto-deploy (set
-# autoDeploy:false in render.yaml or disable it in the dashboard) so you do not
-# deploy twice.
+# This workflow ONLY builds/typechecks both apps on every push and PR to main.
+# It does NOT deploy: Render handles deployment automatically because both
+# services have `autoDeploy: true` in render.yaml. When you merge to main, the
+# CI here must pass, and Render independently rebuilds and redeploys.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
-#   RENDER_DEPLOY_HOOK_API  -> deploy hook URL of the API service
-#   RENDER_DEPLOY_HOOK_WEB  -> deploy hook URL of the web service
-# Each value comes from: Render service -> Settings -> Deploy Hook.
+# No repository secrets are required for this workflow.
 
-name: CI and Deploy to Render
+name: CI
 
 on:
   push:
@@ -43,15 +40,3 @@ jobs:
         run: |
           npm install --include=dev
           npm run build
-
-  deploy:
-    name: Trigger Render deploys
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy API
-        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
-
-      - name: Deploy Web
-        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"
