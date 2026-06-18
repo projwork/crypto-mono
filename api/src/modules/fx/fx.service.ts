@@ -3,7 +3,6 @@ import { AppError } from "../../lib/apiResponse.js";
 import {
   DEFAULT_CHF_TO_ETB,
   DEFAULT_CRYPTO_TO_CHF,
-  DEFAULT_CRYPTO_TO_USD,
   DEFAULT_USD_TO_ETB,
   FX_CACHE_TTL_MS,
 } from "./fx.constants.js";
