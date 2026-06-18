@@ -10,10 +10,11 @@ import { liquidityRouter } from "../modules/liquidity/liquidity.routes.js";
 import { notificationsRouter } from "../modules/notifications/notifications.routes.js";
 import { adminRouter } from "../modules/admin/admin.routes.js";
 import { mockRouter } from "../modules/mock/mock.routes.js";
+import { conversionsRouter } from "../modules/conversions/conversions.routes.js";
 
 /**
  * Central API router. Every module is mounted under its prefix here.
- * Route prefixes are part of the shared contract — keep them in sync with CONTRACTS.md.
+ * Route prefixes are part of the shared contract - keep them in sync with CONTRACTS.md.
  */
 export const apiRouter = Router();
 
@@ -32,6 +33,7 @@ apiRouter.get("/", (_req, res) => {
       "/api/notifications",
       "/api/admin",
       "/api/mock",
+      "/api/conversions",
     ],
   });
 });
@@ -46,3 +48,4 @@ apiRouter.use("/liquidity", liquidityRouter);
 apiRouter.use("/notifications", notificationsRouter);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/mock", mockRouter);
+apiRouter.use("/conversions", conversionsRouter);

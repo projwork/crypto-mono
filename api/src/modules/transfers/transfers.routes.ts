@@ -1,17 +1,31 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { sendOk } from "../../lib/apiResponse.js";
 import { getTransferTimeline } from "../audit/audit.service.js";
-import { createTransferSchema, transferQuoteSchema } from "./transfers.schemas.js";
+import {
+  createTransferSchema,
+  transferQuoteSchema,
+} from "./transfers.schemas.js";
 import {
   createTransfer,
   getTransferById,
   listMyTransfers,
   quoteTransfer,
+  confirmWallet,
+  getReceipt,
+  getPayout,
 } from "./transfers.service.js";
 import { simulateDeposit } from "./transfers.orchestrator.js";
-import { transferStatusBus, type TransferStatusEvent } from "./transfers.events.js";
+import {
+  transferStatusBus,
+  type TransferStatusEvent,
+} from "./transfers.events.js";
 
 /**
  * Transfers module — Modules 8 & 9.
@@ -19,7 +33,11 @@ import { transferStatusBus, type TransferStatusEvent } from "./transfers.events.
 export const transfersRouter = Router();
 
 /** Supports Bearer header or `?accessToken=` for SSE (EventSource) clients. */
-const authWithQueryToken = (req: Request, res: Response, next: NextFunction) => {
+const authWithQueryToken = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   if (!req.headers.authorization && typeof req.query.accessToken === "string") {
     req.headers.authorization = `Bearer ${req.query.accessToken}`;
   }
@@ -117,5 +135,30 @@ transfersRouter.get(
   asyncHandler(async (req, res) => {
     const transfer = await getTransferById(req.user!.id, req.params.id);
     sendOk(res, { transfer });
+  }),
+);
+
+// --- New Endpoints ---
+transfersRouter.post(
+  "/:id/confirm-wallet",
+  asyncHandler(async (req, res) => {
+    const result = await confirmWallet(req.user!.id, req.params.id);
+    sendOk(res, result);
+  }),
+);
+
+transfersRouter.get(
+  "/:id/receipt",
+  asyncHandler(async (req, res) => {
+    const receipt = await getReceipt(req.user!.id, req.params.id);
+    sendOk(res, { receipt });
+  }),
+);
+
+transfersRouter.get(
+  "/:id/payout",
+  asyncHandler(async (req, res) => {
+    const payout = await getPayout(req.user!.id, req.params.id);
+    sendOk(res, { payout });
   }),
 );
