@@ -1,7 +1,14 @@
 import crypto from "node:crypto";
-import { AssetType, type Transfer, type Wallet } from "@prisma/client";
+import {
+  AssetType,
+  ChainType,
+  type Transfer,
+  type Wallet,
+  type ConnectedWallet,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import type { ConnectWalletInput } from "./wallet.schemas.js";
 
 /** Public deposit address shape — documented in CONTRACTS.md. */
 export const toDepositAddress = (wallet: Wallet) => ({
@@ -14,6 +21,15 @@ export const toDepositAddress = (wallet: Wallet) => ({
 
 export type DepositAddress = ReturnType<typeof toDepositAddress>;
 
+/** Public connected wallet shape */
+export const toConnectedWallet = (wallet: ConnectedWallet) => ({
+  address: wallet.address,
+  chain: wallet.chain,
+  active: wallet.active,
+});
+
+export type PublicConnectedWallet = ReturnType<typeof toConnectedWallet>;
+
 /** Deposit instructions for a transfer — documented in CONTRACTS.md. */
 export interface DepositInstructions {
   transferId: string;
@@ -24,7 +40,10 @@ export interface DepositInstructions {
   network: string;
 }
 
-const getOwnedTransfer = async (userId: string, transferId: string): Promise<Transfer> => {
+const getOwnedTransfer = async (
+  userId: string,
+  transferId: string,
+): Promise<Transfer> => {
   const transfer = await prisma.transfer.findFirst({
     where: { id: transferId, senderId: userId },
   });
@@ -93,7 +112,10 @@ export const getDepositInstructions = async (
   transferId: string,
 ): Promise<DepositInstructions> => {
   const transfer = await getOwnedTransfer(userId, transferId);
-  const { depositAddress } = await getOrCreateDepositAddress(userId, transferId);
+  const { depositAddress } = await getOrCreateDepositAddress(
+    userId,
+    transferId,
+  );
 
   return {
     transferId: transfer.id,
@@ -103,4 +125,85 @@ export const getDepositInstructions = async (
     expectedAmount: transfer.sendAmount.toString(),
     network: "Ethereum",
   };
+};
+
+// --- Connected Wallet Functions ---
+
+export const connectWallet = async (
+  userId: string,
+  input: ConnectWalletInput,
+) => {
+  // Normalize address to lowercase for consistency
+  const normalizedAddress = input.address.toLowerCase();
+
+  // Check if wallet already exists for user
+  const existingWallet = await prisma.connectedWallet.findFirst({
+    where: {
+      userId,
+      address: normalizedAddress,
+      chain: input.chain,
+    },
+  });
+
+  if (existingWallet) {
+    // If exists, reactivate it and update signature
+    const updatedWallet = await prisma.connectedWallet.update({
+      where: { id: existingWallet.id },
+      data: {
+        active: true,
+        signature: input.signature,
+      },
+    });
+    return toConnectedWallet(updatedWallet);
+  }
+
+  // Create new connected wallet
+  const newWallet = await prisma.connectedWallet.create({
+    data: {
+      userId,
+      address: normalizedAddress,
+      chain: input.chain,
+      signature: input.signature,
+      active: true,
+    },
+  });
+
+  return toConnectedWallet(newWallet);
+};
+
+export const getMyWallet = async (userId: string) => {
+  // Get user's active connected wallet(s) - prioritize most recent
+  const wallet = await prisma.connectedWallet.findFirst({
+    where: {
+      userId,
+      active: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!wallet) {
+    // Return null or 404? For consistency with other endpoints, return null object
+    return {
+      address: "",
+      chain: ChainType.ETHEREUM,
+      active: false,
+    };
+  }
+
+  return toConnectedWallet(wallet);
+};
+
+export const disconnectWallet = async (userId: string) => {
+  // Deactivate all user's active connected wallets
+  await prisma.connectedWallet.updateMany({
+    where: {
+      userId,
+      active: true,
+    },
+    data: {
+      active: false,
+    },
+  });
+
+  return { disconnected: true };
 };

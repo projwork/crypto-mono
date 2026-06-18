@@ -86,29 +86,38 @@ enum NotificationType {
   SYSTEM
 }
 
+enum ChainType {
+  ETHEREUM
+  BSC
+  POLYGON
+  ARBITRUM
+  OPTIMISM
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
 
 /// Diaspora sender or admin account (PRD §5, §6 Step 1).
 model User {
-  id           String   @id @default(cuid())
-  firstName    String
-  lastName     String
-  email        String   @unique
-  phone        String
-  country      String
-  passwordHash String
-  role         Role     @default(SENDER)
-  kycTier      KycTier  @default(TIER_1)
-  kycStatus    KycStatus @default(PENDING)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String           @id @default(cuid())
+  firstName        String
+  lastName         String
+  email            String           @unique
+  phone            String
+  country          String
+  passwordHash     String
+  role             Role             @default(SENDER)
+  kycTier          KycTier        @default(TIER_1)
+  kycStatus        KycStatus      @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   kycVerifications  KycVerification[] @relation("UserKyc")
   reviewedKyc       KycVerification[] @relation("KycReviewer")
   beneficiaries     Beneficiary[]
   wallets           Wallet[]
+  connectedWallets  ConnectedWallet[]
   transfers         Transfer[]
   notifications     Notification[]
   auditLogs         AuditLog[]
@@ -191,6 +200,24 @@ model Wallet {
 
   @@index([userId])
   @@index([address])
+}
+
+/// User-connected wallet (MetaMask, etc.)
+model ConnectedWallet {
+  id        String    @id @default(cuid())
+  userId    String
+  address   String
+  chain     ChainType
+  active    Boolean   @default(true)
+  signature String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([address])
+  @@unique([userId, address, chain])
 }
 
 /// A remittance transfer and its lifecycle snapshot (PRD §6, §7, §9).
