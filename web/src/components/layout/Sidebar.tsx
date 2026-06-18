@@ -9,7 +9,7 @@ import { NAV_ITEMS } from "./nav";
 function Logo() {
   return (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-600 text-white shadow-sm">
         <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <path
             d="M12 2v20M7 6l5-4 5 4M7 18l5 4 5-4"
@@ -52,11 +52,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               className={cn(
                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
               )}
             >
-              <span className={cn(active ? "text-emerald-600 dark:text-emerald-400" : "")}>
+              <span className={cn(active ? "text-indigo-600 dark:text-indigo-400" : "")}>
                 {item.icon}
               </span>
               {item.label}

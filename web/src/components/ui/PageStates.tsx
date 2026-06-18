@@ -28,7 +28,7 @@ export function PageHeader({
 export function LoadingBlock({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-500">
-      <span className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+      <span className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
       <p className="text-sm">{label}</p>
     </div>
   );

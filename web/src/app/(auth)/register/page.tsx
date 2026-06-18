@@ -9,31 +9,16 @@ import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-const COUNTRIES = [
-  "Switzerland",
-  "Germany",
-  "Austria",
-  "France",
-  "Italy",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "United Arab Emirates",
-  "Ethiopia",
-  "Other",
-];
-
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
   const router = useRouter();
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     country: "Switzerland",
     password: "",
-    confirmPassword: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -42,36 +27,16 @@ export default function RegisterPage() {
     if (!loading && user) router.replace("/dashboard");
   }, [loading, user, router]);
 
-  const update = (key: keyof typeof form) => (value: string) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters long.");
-      return;
-    }
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     setSubmitting(true);
     try {
-      await register({
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        country: form.country,
-        password: form.password,
-      });
+      await register(formData);
       router.replace("/dashboard");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Unable to create your account. Please try again.",
+        err instanceof ApiError ? err.message : "Unable to create account. Please try again.",
       );
     } finally {
       setSubmitting(false);
@@ -79,110 +44,102 @@ export default function RegisterPage() {
   };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-          Create your account
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="mb-10 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          Create account
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Start sending money home in minutes.
+        <p className="mt-3 text-slate-500 font-medium">
+          Join DiasporaPay to start sending USDC today.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && <Alert tone="error">{error}</Alert>}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <Alert tone="error">{error}</Alert>}
 
-        <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First name"
+              placeholder="Abebe"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              required
+              className="rounded-xl h-11"
+            />
+            <Input
+              label="Last name"
+              placeholder="Bekele"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              required
+              className="rounded-xl h-11"
+            />
+          </div>
+
           <Input
-            label="First name"
-            autoComplete="given-name"
-            placeholder="Abebe"
-            value={form.firstName}
-            onChange={(e) => update("firstName")(e.target.value)}
+            label="Email address"
+            type="email"
+            placeholder="you@example.com"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
+            className="rounded-xl h-11"
           />
+
           <Input
-            label="Last name"
-            autoComplete="family-name"
-            placeholder="Bekele"
-            value={form.lastName}
-            onChange={(e) => update("lastName")(e.target.value)}
+            label="Phone number"
+            type="tel"
+            placeholder="+41 79 123 45 67"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
+            className="rounded-xl h-11"
           />
+
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+            className="rounded-xl h-11"
+          />
+
+          <p className="text-[11px] text-slate-500 leading-relaxed text-center px-2">
+            By creating an account, you agree to our{" "}
+            <Link href="/terms" className="text-indigo-600 font-bold">Terms</Link> and{" "}
+            <Link href="/privacy" className="text-indigo-600 font-bold">Privacy</Link>.
+          </p>
+
+          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2" loading={submitting}>
+            Create Account
+          </Button>
+        </form>
+
+        <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-slate-100" />
+          </div>
+          <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
+            <span className="bg-white px-4 text-slate-400">or join with</span>
+          </div>
         </div>
 
-        <Input
-          label="Email address"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={form.email}
-          onChange={(e) => update("email")(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Phone number"
-          type="tel"
-          autoComplete="tel"
-          placeholder="+41 79 123 45 67"
-          value={form.phone}
-          onChange={(e) => update("phone")(e.target.value)}
-          required
-        />
-
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="country"
-            className="text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Country
-          </label>
-          <select
-            id="country"
-            value={form.country}
-            onChange={(e) => update("country")(e.target.value)}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          >
-            {COUNTRIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+        <div className="mt-6">
+          <Link href="/metamask" className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 h-12 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+            <span className="text-lg">🦊</span>
+            Connect MetaMask
+          </Link>
         </div>
+      </div>
 
-        <Input
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="At least 8 characters"
-          hint="Use 8 or more characters."
-          value={form.password}
-          onChange={(e) => update("password")(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Confirm password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Re-enter your password"
-          value={form.confirmPassword}
-          onChange={(e) => update("confirmPassword")(e.target.value)}
-          required
-        />
-
-        <Button type="submit" size="lg" className="w-full" loading={submitting}>
-          Create account
-        </Button>
-      </form>
-
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-8 text-center text-sm font-medium text-slate-500">
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-emerald-600 hover:text-emerald-500 dark:text-emerald-400"
+          className="font-bold text-indigo-600 hover:text-indigo-500"
         >
           Sign in
         </Link>

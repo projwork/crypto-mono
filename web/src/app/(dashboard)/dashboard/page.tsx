@@ -38,19 +38,19 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Hero */}
-      <Card className="overflow-hidden border-0 bg-gradient-to-br from-emerald-600 to-teal-700 text-white">
+      <Card className="overflow-hidden border-0 bg-gradient-to-br from-indigo-600 to-teal-700 text-white">
         <CardContent className="flex flex-col gap-4 p-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm text-emerald-100">Good to see you,</p>
+            <p className="text-sm text-indigo-100">Good to see you,</p>
             <h1 className="mt-1 text-2xl font-semibold">
               {user.firstName} {user.lastName}
             </h1>
-            <p className="mt-2 max-w-md text-sm text-emerald-50/90">
+            <p className="mt-2 max-w-md text-sm text-indigo-50/90">
               Send crypto and deliver Ethiopian Birr to family and friends in just a few steps.
             </p>
           </div>
           <Link href="/transfers/new">
-            <Button variant="secondary" size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50">
+            <Button variant="secondary" size="lg" className="bg-white text-indigo-700 hover:bg-indigo-50">
               Send money
             </Button>
           </Link>

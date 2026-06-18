@@ -26,6 +26,11 @@ export const config = {
     accessTtl: process.env.JWT_ACCESS_TTL ?? "15m",
     refreshTtl: process.env.JWT_REFRESH_TTL ?? "7d",
   },
+  conversions: {
+    coinGeckoApiKey: process.env.COINGECKO_DEMO_API_KEY ?? "",
+    rateCacheTtlMs: toNumber(process.env.CONVERSION_RATE_CACHE_TTL_MS, 60_000),
+    requestTimeoutMs: toNumber(process.env.CONVERSION_REQUEST_TIMEOUT_MS, 8_000),
+  },
 } as const;
 
 export const isProduction = config.env === "production";

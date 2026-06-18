@@ -10,14 +10,14 @@ import {
 } from "@/lib/transfers/status";
 
 const dotStyles: Record<StepVisualState, string> = {
-  completed: "bg-emerald-500 ring-emerald-500/20",
+  completed: "bg-indigo-500 ring-indigo-500/20",
   current: "bg-sky-500 ring-sky-500/30 animate-pulse",
   pending: "bg-slate-200 ring-slate-200/50 dark:bg-slate-700",
   failed: "bg-rose-500 ring-rose-500/30",
 };
 
 const lineStyles: Record<StepVisualState, string> = {
-  completed: "bg-emerald-500",
+  completed: "bg-indigo-500",
   current: "bg-sky-300 dark:bg-sky-700",
   pending: "bg-slate-200 dark:bg-slate-700",
   failed: "bg-rose-400",

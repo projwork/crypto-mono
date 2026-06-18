@@ -48,7 +48,7 @@ function TierCard({
       className={cn(
         "flex w-full flex-col rounded-xl border p-4 text-left transition-all",
         selected
-          ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20 dark:bg-emerald-500/10"
+          ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20 dark:bg-indigo-500/10"
           : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600",
       )}
     >
@@ -56,7 +56,7 @@ function TierCard({
         <span className="font-semibold text-slate-900 dark:text-white">{tierLabel(info.tier)}</span>
         {current && <Badge tone="info">Current</Badge>}
       </div>
-      <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-400">{limit}</p>
+      <p className="mt-1 text-sm text-indigo-600 dark:text-indigo-400">{limit}</p>
       <ul className="mt-3 space-y-1">
         {info.requirements.map((req) => (
           <li key={req} className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -220,7 +220,7 @@ export default function KycPage() {
           </CardHeader>
           <CardContent>
             {data.limit.unlimited ? (
-              <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+              <p className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400">
                 Unlimited
               </p>
             ) : (
@@ -235,7 +235,7 @@ export default function KycPage() {
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    className="h-full rounded-full bg-indigo-500 transition-all"
                     style={{ width: `${limitPct}%` }}
                   />
                 </div>
@@ -326,7 +326,7 @@ export default function KycPage() {
                         placeholder="Describe the origin of funds you plan to transfer…"
                         value={sourceOfFunds}
                         onChange={(e) => setSourceOfFunds(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                       />
                     </div>
                   </>
@@ -375,7 +375,7 @@ export default function KycPage() {
                     href={uploadUrl(verification.passportUrl)!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-600 hover:underline dark:text-emerald-400"
+                    className="text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     Passport
                   </a>
@@ -387,7 +387,7 @@ export default function KycPage() {
                     href={uploadUrl(verification.nationalIdUrl)!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-600 hover:underline dark:text-emerald-400"
+                    className="text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     National ID
                   </a>
@@ -399,7 +399,7 @@ export default function KycPage() {
                     href={uploadUrl(verification.selfieUrl)!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-600 hover:underline dark:text-emerald-400"
+                    className="text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     Selfie
                   </a>

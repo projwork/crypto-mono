@@ -4,6 +4,7 @@ import { authRouter } from "../modules/auth/auth.routes.js";
 import { kycRouter } from "../modules/kyc/kyc.routes.js";
 import { beneficiariesRouter } from "../modules/beneficiaries/beneficiaries.routes.js";
 import { walletRouter } from "../modules/wallet/wallet.routes.js";
+import { conversionsRouter } from "../modules/conversions/conversions.routes.js";
 import { transfersRouter } from "../modules/transfers/transfers.routes.js";
 import { liquidityRouter } from "../modules/liquidity/liquidity.routes.js";
 import { notificationsRouter } from "../modules/notifications/notifications.routes.js";
@@ -26,6 +27,7 @@ apiRouter.get("/", (_req, res) => {
       "/api/kyc",
       "/api/beneficiaries",
       "/api/wallet",
+      "/api/conversions",
       "/api/transfers",
       "/api/liquidity",
       "/api/notifications",
@@ -40,6 +42,7 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/kyc", kycRouter);
 apiRouter.use("/beneficiaries", beneficiariesRouter);
 apiRouter.use("/wallet", walletRouter);
+apiRouter.use("/conversions", conversionsRouter);
 apiRouter.use("/transfers", transfersRouter);
 apiRouter.use("/liquidity", liquidityRouter);
 apiRouter.use("/notifications", notificationsRouter);
