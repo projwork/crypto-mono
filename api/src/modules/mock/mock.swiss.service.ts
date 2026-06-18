@@ -26,6 +26,8 @@ export interface SwissDepositResponse {
   swissReference: string;
   status: "FUNDS_RECEIVED";
   receivedAmount: number;
+  creditedAmount: number;
+  creditedCurrency: "USD" | "CHF";
 }
 
 /** PRD §13.2 response shape. */
@@ -53,7 +55,12 @@ export const swissDepositConfirmation = async (
     throw AppError.notFound("Transfer not found for Swiss deposit confirmation");
   }
 
-  const { swissReference, receivedAmount } = await creditSwissDeposit(input);
+  const {
+    swissReference,
+    receivedAmount,
+    creditedAmount,
+    creditedCurrency,
+  } = await creditSwissDeposit(input);
 
   await prisma.transfer.update({
     where: { id: transfer.id },
@@ -65,13 +72,20 @@ export const swissDepositConfirmation = async (
     swissReference,
     status: "FUNDS_RECEIVED",
     receivedAmount,
+    creditedAmount,
+    creditedCurrency,
   };
 };
 
 /** Credits the Swiss pool without changing transfer status (Module 9 orchestrator). */
 export const creditSwissDeposit = async (
   input: SwissDepositInput,
-): Promise<{ swissReference: string; receivedAmount: number }> => {
+): Promise<{
+  swissReference: string;
+  receivedAmount: number;
+  creditedAmount: number;
+  creditedCurrency: "USD" | "CHF";
+}> => {
   const transfer = await prisma.transfer.findFirst({
     where: { reference: input.referenceId },
   });
@@ -80,16 +94,33 @@ export const creditSwissDeposit = async (
     throw AppError.notFound("Transfer not found for Swiss deposit confirmation");
   }
 
+  if (transfer.asset !== input.asset) {
+    throw AppError.badRequest("Swiss deposit asset does not match the transfer");
+  }
+
+  if (Math.abs(Number(transfer.sendAmount) - input.amount) > 0.000001) {
+    throw AppError.badRequest("Swiss deposit amount does not match the transfer");
+  }
+
   const swissReference = genRef("SWISS");
+  const creditedCurrency = transfer.chfAmount ? "CHF" : "USD";
+  const creditedAmount = transfer.chfAmount
+    ? Number(transfer.chfAmount)
+    : Number(transfer.usdValue);
 
   await creditSwiss({
-    amount: input.amount,
-    currency: "USD",
+    amount: creditedAmount,
+    currency: creditedCurrency,
     referenceId: input.referenceId,
-    note: `Swiss deposit ${input.asset} ${swissReference}`,
+    note: `Swiss deposit ${input.amount} ${input.asset} converted to ${creditedAmount} ${creditedCurrency} (${swissReference})`,
   });
 
-  return { swissReference, receivedAmount: input.amount };
+  return {
+    swissReference,
+    receivedAmount: input.amount,
+    creditedAmount,
+    creditedCurrency,
+  };
 };
 
 export const getSwissBalance = async (): Promise<SwissBalanceResponse> => {

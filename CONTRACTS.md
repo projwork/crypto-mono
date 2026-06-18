@@ -276,7 +276,9 @@ JSON directly** (no standard API envelope), except `GET /fx-rate` which uses the
 
 **Swiss liquidity (Step 7.2):**
 - `POST /api/mock/swiss/deposit-confirmation` — body `{ referenceId, asset, amount }`
-  → `{ success, swissReference, status: "FUNDS_RECEIVED", receivedAmount }`. Credits Swiss pool USD balance.
+  → `{ success, swissReference, status: "FUNDS_RECEIVED", receivedAmount, creditedAmount,
+  creditedCurrency }`. New transfers credit the snapshotted CHF value; legacy transfers fall back
+  to their snapshotted USD value.
 - `GET /api/mock/swiss/balance` → `{ chfBalance, usdBalance }`
 - `POST /api/mock/swiss/withdraw` — body `{ amount, currency?, referenceId? }`
   → `{ success, swissReference, status: "WITHDRAWN", amount, currency }`
@@ -294,18 +296,22 @@ Files: `apps/api/src/modules/transfers/*`. All routes require `authMiddleware`.
 **Fee policy (PRD §6 Step 4):** USDC/USDT flat **2** crypto fee; ETH 1% (min 0.001 ETH).
 Mock ETH/USD = 3500. Uses `fxService.quote()` with `{ type: "crypto", amount: feeCrypto }`.
 
-**`TransferQuote`:** `{ asset, amount, beneficiaryId, usdValue, usdToEtb, grossEtb, feeCrypto,
-feeEtb, payoutEtb, rateTimestamp }`.
+**`TransferQuote`:** `{ asset, amount, beneficiaryId, cryptoToUsd, usdValue, usdToChf, chfAmount,
+chfToEtb, usdToEtb, grossEtb, feeCrypto, feeEtb, payoutEtb, rateSource, rateTimestamp }`.
+Rates come from the conversion providers and are snapshotted when the transfer is created.
+The fee is converted through the same crypto→CHF→ETB path as the principal.
 
-**`PublicTransfer`:** `{ id, reference, status, asset, sendAmount, feeCrypto, usdValue, usdToEtb,
-grossEtb, feeEtb, payoutEtb, txHash?, swissReference?, payoutReference?, failureReason?,
-rateTimestamp?, createdAt, updatedAt, completedAt?, beneficiary: PublicBeneficiary,
-depositAddress: DepositAddress | null }`. Amounts are decimal strings in responses.
+**`PublicTransfer`:** `{ id, reference, status, asset, sendAmount, feeCrypto, cryptoToUsd?,
+usdValue, usdToChf?, chfAmount?, chfToEtb?, usdToEtb, grossEtb, feeEtb, payoutEtb, rateSource?,
+txHash?, swissReference?, payoutReference?, failureReason?, rateTimestamp?, createdAt, updatedAt,
+completedAt?, beneficiary: PublicBeneficiary, depositAddress: DepositAddress | null }`.
+Amounts are decimal strings in responses; new snapshot fields are nullable for legacy transfers.
 
 **Endpoints** (`/api/transfers`, auth required):
 - `POST /quote` — body `{ asset, amount, beneficiaryId }` → `{ quote: TransferQuote }`.
   Validates beneficiary belongs to caller.
-- `POST /` — creates transfer (`reference` e.g. `TX0001`), snapshots quote fields, enforces KYC
+- `POST /` — creates transfer (`reference` e.g. `TX0001`), snapshots the accepted live conversion
+  fields and creates both `Conversion` rows in the same database transaction, enforces KYC
   approval + monthly limit via `getUserTransferLimit`, creates deposit wallet, sets status
   `AWAITING_CRYPTO`. → `201 { transfer }`.
 - `GET /` → `{ transfers: PublicTransfer[] }` (mine, newest first).
@@ -532,8 +538,14 @@ under `providers/` so external API changes do not leak into transfer/orchestrati
 - `POST /chf-to-etb` (auth) body `{ transferId, chfAmount }`
   → `{ transferId, chfAmount, rate, etbAmount, source, convertedAt }`.
 
-**Orchestrator integration:** `POST /api/transfers/:id/simulate-deposit` now records
-`CRYPTO_TO_CHF` and `CHF_TO_ETB` conversion snapshots before transitioning to `FX_CONVERTED`.
-Liquidity reserve/disbursement remains owned by Module 10 to avoid double-reserving ETB.
+**Authoritative settlement integration:**
+- `POST /api/transfers/quote` uses live conversion-provider rates.
+- Transfer creation stores the accepted crypto/USD, USD/CHF, CHF amount, CHF/ETB, ETB amounts,
+  provider source, and timestamp; it also creates both conversion records atomically.
+- Explicit conversion POST endpoints return existing transfer snapshots instead of replacing them
+  with newer rates.
+- Swiss liquidity is credited with the stored CHF amount (USD fallback for legacy transfers).
+- The orchestrator reserves and pays the stored `transfer.payoutEtb`, so quote, fee, reserve, and
+  payout use one consistent snapshot.
 
 

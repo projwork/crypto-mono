@@ -123,6 +123,27 @@ export const convertCryptoToChf = async (
     throw AppError.badRequest("cryptoAmount must match the transfer send amount");
   }
 
+  const existing = await prisma.conversion.findUnique({
+    where: {
+      transferId_type: {
+        transferId: transfer.id,
+        type: ConversionType.CRYPTO_TO_CHF,
+      },
+    },
+  });
+
+  if (existing) {
+    return {
+      transferId: transfer.id,
+      asset: input.asset,
+      cryptoAmount: Number(existing.fromAmount),
+      marketRate: Number(existing.rate),
+      chfAmount: Number(existing.toAmount),
+      source: existing.source,
+      convertedAt: existing.fetchedAt.toISOString(),
+    };
+  }
+
   const rate = await getCryptoToChfRate(input.asset);
   const chfAmount = round2(input.cryptoAmount * rate.chfRate);
   const convertedAt = new Date();
@@ -185,6 +206,26 @@ export const convertChfToEtb = async (
 
   if (previous && Math.abs(Number(previous.toAmount) - input.chfAmount) > 0.01) {
     throw AppError.badRequest("chfAmount must match the transfer crypto-to-CHF conversion");
+  }
+
+  const existing = await prisma.conversion.findUnique({
+    where: {
+      transferId_type: {
+        transferId: transfer.id,
+        type: ConversionType.CHF_TO_ETB,
+      },
+    },
+  });
+
+  if (existing) {
+    return {
+      transferId: transfer.id,
+      chfAmount: Number(existing.fromAmount),
+      rate: Number(existing.rate),
+      etbAmount: Number(existing.toAmount),
+      source: existing.source,
+      convertedAt: existing.fetchedAt.toISOString(),
+    };
   }
 
   const rate = await getChfToEtbRate();

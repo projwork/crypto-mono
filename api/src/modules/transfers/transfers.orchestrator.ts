@@ -1,7 +1,6 @@
 import {
   BankName,
   PayoutMethod,
-  Role,
   TransferStatus,
   type Beneficiary,
 } from "@prisma/client";
@@ -10,7 +9,6 @@ import { AppError } from "../../lib/apiResponse.js";
 import { creditSwissDeposit } from "../mock/mock.swiss.service.js";
 import { processPayout, type PayoutBank } from "../mock/mock.payout.service.js";
 import { disburseEtb, releaseEtb, reserveEtb } from "../liquidity/liquidity.service.js";
-import { convertChfToEtb, convertCryptoToChf } from "../conversions/conversions.service.js";
 import { getTransferById } from "./transfers.service.js";
 import { generateTxHash, transition } from "./transfers.state-machine.js";
 
@@ -79,26 +77,11 @@ export const simulateDeposit = async (userId: string, transferId: string) => {
       swissReference: swiss.swissReference,
     });
 
-    const cryptoToChf = await convertCryptoToChf(
-      { id: userId, role: Role.SENDER },
-      {
-        transferId,
-        asset: transfer.asset,
-        cryptoAmount: Number(transfer.sendAmount),
-      },
-    );
-
-    const chfToEtb = await convertChfToEtb(
-      { id: userId, role: Role.SENDER },
-      {
-        transferId,
-        chfAmount: cryptoToChf.chfAmount,
-      },
-    );
-
     await transition(transferId, TransferStatus.FX_CONVERTED, {
       actorId: userId,
-      note: `Conversion snapshotted: ${cryptoToChf.chfAmount} CHF -> ${chfToEtb.etbAmount} ETB`,
+      note: transfer.chfAmount
+        ? `Using transfer snapshot: ${transfer.chfAmount.toString()} CHF -> ${transfer.grossEtb.toString()} ETB`
+        : "Using legacy USD-to-ETB transfer snapshot",
     });
 
     await reserveEtb(payoutEtb, transfer.reference);
