@@ -2,7 +2,6 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
 import { toPublicUser } from "../auth/auth.service.js";
 import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
-import { toDepositAddress } from "../wallet/wallet.service.js";
 import { toPublicTransfer } from "../transfers/transfers.service.js";
 import { logEvent } from "../audit/audit.service.js";
 import { notify } from "../notifications/notifications.service.js";
