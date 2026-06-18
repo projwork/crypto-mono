@@ -24,6 +24,7 @@ apiRouter.get("/", (_req, res) => {
     modules: [
       "/api/auth",
       "/api/kyc",
+      "/api/docs",
       "/api/beneficiaries",
       "/api/wallet",
       "/api/conversions",
