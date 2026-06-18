@@ -18,6 +18,13 @@
 #   https://crypto-remittance-web.onrender.com
 # If you change a name, update the hardcoded URLs in the envVars too.
 
+# Disable Pull Request Preview Environments. With this off, Render will NOT spin
+# up a deploy when you push to a feature branch or open a PR. Combined with
+# `branch: main` + `autoDeploy: true` on each service below, deploys happen ONLY
+# when a commit lands on main (i.e. when a PR is merged).
+previews:
+  generation: "off"
+
 services:
   # ---------------------------------------------------------------------------
   # Backend API (Express + Prisma)
