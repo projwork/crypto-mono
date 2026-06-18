@@ -62,15 +62,33 @@ const getOwnedBeneficiary = async (
   return beneficiary;
 };
 
+export interface TransferQuoteDependencies {
+  assertOwnedBeneficiary: (
+    userId: string,
+    beneficiaryId: string,
+  ) => Promise<void>;
+  getCryptoRate: typeof getCryptoToChfRate;
+  getFiatRate: typeof getChfToEtbRate;
+}
+
+const defaultTransferQuoteDependencies: TransferQuoteDependencies = {
+  assertOwnedBeneficiary: async (userId, beneficiaryId) => {
+    await getOwnedBeneficiary(userId, beneficiaryId);
+  },
+  getCryptoRate: getCryptoToChfRate,
+  getFiatRate: getChfToEtbRate,
+};
+
 const buildQuote = async (
   userId: string,
   input: TransferQuoteInput,
+  dependencies: TransferQuoteDependencies = defaultTransferQuoteDependencies,
 ): Promise<TransferQuote> => {
-  await getOwnedBeneficiary(userId, input.beneficiaryId);
+  await dependencies.assertOwnedBeneficiary(userId, input.beneficiaryId);
 
   const feeCrypto = getFeeCrypto(input.asset, input.amount);
-  const cryptoToChf = await getCryptoToChfRate(input.asset);
-  const chfToEtb = await getChfToEtbRate();
+  const cryptoToChf = await dependencies.getCryptoRate(input.asset);
+  const chfToEtb = await dependencies.getFiatRate();
 
   const usdValue = round2(input.amount * cryptoToChf.usdRate);
   const chfAmount = round2(input.amount * cryptoToChf.chfRate);
@@ -162,7 +180,8 @@ export const toPublicTransfer = (transfer: TransferWithRelations) => ({
 export const quoteTransfer = async (
   userId: string,
   input: TransferQuoteInput,
-): Promise<TransferQuote> => buildQuote(userId, input);
+  dependencies?: TransferQuoteDependencies,
+): Promise<TransferQuote> => buildQuote(userId, input, dependencies);
 
 export const createTransfer = async (userId: string, input: CreateTransferInput) => {
   const quote = await buildQuote(userId, input);

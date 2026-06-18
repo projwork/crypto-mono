@@ -559,4 +559,11 @@ under `providers/` so external API changes do not leak into transfer/orchestrati
 - The orchestrator reserves and pays the stored `transfer.payoutEtb`, so quote, fee, reserve, and
   payout use one consistent snapshot.
 
+**Automated tests:** `cd api && npm test`
+- Provider tests mock HTTP responses for CoinGecko and ExchangeRate-API.
+- Coverage includes provider success, stablecoin fallback, crypto/fiat cache behavior, CHF/ETB
+  derivation, authoritative quote/fee math, accepted snapshot reuse, and sender ownership checks.
+- Tests use narrow injected dependencies for service boundaries; production calls still default to
+  the real Prisma client and rate providers.
+
 
