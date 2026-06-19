@@ -6,7 +6,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ApiError } from "@/lib/api/client";
+import { authApi } from "@/lib/api/auth";
+import { getPostAuthRoute } from "@/lib/auth/routing";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function LoginPage() {
@@ -18,7 +21,9 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace("/dashboard");
+    if (!loading && user) {
+      void getPostAuthRoute(user).then((route) => router.replace(route));
+    }
   }, [loading, user, router]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -27,7 +32,9 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login({ email, password });
-      router.replace("/dashboard");
+      const me = await authApi.me();
+      const route = await getPostAuthRoute(me);
+      router.replace(route);
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Unable to sign in. Please try again.",
@@ -62,23 +69,21 @@ export default function LoginPage() {
             required
             className="rounded-xl h-12"
           />
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-               <label className="text-sm font-semibold text-slate-700">Password</label>
-               <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-500">
-                 Forgot?
-               </button>
-            </div>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="rounded-xl h-12"
-            />
-          </div>
+
+          <PasswordInput
+            label="Password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="rounded-xl h-12"
+            labelAction={
+              <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-500">
+                Forgot?
+              </button>
+            }
+          />
 
           <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2" loading={submitting}>
             Sign In

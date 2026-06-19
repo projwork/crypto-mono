@@ -6,7 +6,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ApiError } from "@/lib/api/client";
+import { getPostAuthRoute } from "@/lib/auth/routing";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function RegisterPage() {
@@ -19,21 +21,36 @@ export default function RegisterPage() {
     phone: "",
     country: "Switzerland",
     password: "",
+    confirmPassword: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) router.replace("/dashboard");
+    if (!loading && user) {
+      void getPostAuthRoute(user).then((route) => router.replace(route));
+    }
   }, [loading, user, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match. Please re-enter your password.");
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await register(formData);
-      router.replace("/dashboard");
+      const { confirmPassword: _, ...payload } = formData;
+      await register(payload);
+      router.replace("/kyc/submit");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Unable to create account. Please try again.",
@@ -97,12 +114,24 @@ export default function RegisterPage() {
             className="rounded-xl h-11"
           />
 
-          <Input
+          <PasswordInput
             label="Password"
-            type="password"
             placeholder="••••••••"
+            autoComplete="new-password"
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+            minLength={8}
+            className="rounded-xl h-11"
+            hint="At least 8 characters"
+          />
+
+          <PasswordInput
+            label="Confirm password"
+            placeholder="••••••••"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
             required
             className="rounded-xl h-11"
           />
