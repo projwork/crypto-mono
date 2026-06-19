@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { getPostAuthRoute } from "@/lib/auth/routing";
 import { Header } from "@/components/landing/Header";
 import { Hero } from "@/components/landing/Hero";
 import { Partners } from "@/components/landing/Partners";
@@ -17,7 +18,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/dashboard");
+      void getPostAuthRoute(user).then((route) => router.replace(route));
     }
   }, [loading, user, router]);
 
