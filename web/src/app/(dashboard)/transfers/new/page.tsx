@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ConversionRatesPanel } from "@/components/transfers/ConversionRatesPanel";
 import { QuotePanel } from "@/components/transfers/QuotePanel";
 import { WizardStepper } from "@/components/transfers/WizardStepper";
 import { Alert } from "@/components/ui/Alert";
@@ -305,13 +306,14 @@ export default function NewTransferPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-4">
             <QuotePanel
               quote={quote}
               loading={quoteLoading}
               error={quoteError}
               className="sticky top-24"
             />
+            <ConversionRatesPanel asset={asset} />
           </div>
         </div>
       )}
