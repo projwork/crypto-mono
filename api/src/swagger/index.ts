@@ -3,7 +3,7 @@ import swaggerUi from "swagger-ui-express";
 import { openApiSpec } from "./openapi.js";
 
 /**
- * Mounts Swagger UI for Auth + KYC modules at /api/docs.
+ * Mounts Swagger UI for the full API at /api/docs.
  * Raw OpenAPI JSON is available at /api/docs/openapi.json.
  */
 export const mountApiDocs = (app: Express): void => {
