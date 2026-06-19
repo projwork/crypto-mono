@@ -66,11 +66,14 @@ export function ConversionRatesPanel({ asset, className }: ConversionRatesPanelP
             <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
               <p className="text-sm text-slate-500">Crypto → CHF</p>
               <p className="mt-2 font-semibold text-slate-900 dark:text-white">
-                1 {cryptoToChf.asset} = {formatUsd(cryptoToChf.usdRate)}
+                1 {cryptoToChf.asset} = {cryptoToChf.chfRate.toFixed(6)} CHF
+              </p>
+              <p className="text-slate-500">
+                USD Price: {formatUsd(cryptoToChf.usdRate)}
               </p>
               <p className="text-slate-500">
                 1 USD = {cryptoToChf.usdToChf.toFixed(6)} CHF
-              </p>
+              </p>    
               <p className="mt-3 text-xs text-slate-400">
                 Source: {cryptoToChf.source}
               </p>
