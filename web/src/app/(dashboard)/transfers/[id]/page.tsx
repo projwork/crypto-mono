@@ -11,6 +11,7 @@ import { ErrorBlock, LoadingBlock, PageHeader } from "@/components/ui/PageStates
 import { useTransferTimeline } from "@/lib/hooks/useTransferTimeline";
 import { formatAsset, formatEtb, humanize } from "@/lib/utils";
 import { formatDateTime } from "@/lib/transfers/status";
+import { ConversionRatesPanel } from "@/components/transfers/ConversionRatesPanel";
 
 export default function TransferDetailPage({
   params,
@@ -121,6 +122,8 @@ export default function TransferDetailPage({
               </CardContent>
             </Card>
           )}
+
+          <ConversionRatesPanel asset={transfer.asset} />
         </div>
 
         {/* Live timeline */}

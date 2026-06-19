@@ -162,6 +162,25 @@ export interface TransferQuotePayload {
   beneficiaryId: string;
 }
 
+export interface CryptoToChfRate {
+  asset: AssetType;
+  usdRate: number;
+  usdToChf: number;
+  chfRate: number;
+  source: string;
+  fetchedAt: string;
+}
+
+export interface ChfToEtbRate {
+  from: "CHF";
+  to: "ETB";
+  rate: number;
+  usdToChf: number;
+  usdToEtb: number;
+  source: string;
+  fetchedAt: string;
+}
+
 export interface DepositAddress {
   id: string;
   transferId: string;
