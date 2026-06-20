@@ -5,7 +5,49 @@ import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
 import { toPublicTransfer } from "../transfers/transfers.service.js";
 import { logEvent } from "../audit/audit.service.js";
 import { notify } from "../notifications/notifications.service.js";
-import { AssetType, NotificationType } from "@prisma/client";
+import { AssetType, NotificationType, type Prisma } from "@prisma/client";
+import type { AdminUserListQuery } from "./admin.schemas.js";
+
+export const listAdminUsers = async (filters: AdminUserListQuery) => {
+  const where: Prisma.UserWhereInput = {};
+
+  if (filters.role) {
+    where.role = filters.role;
+  }
+
+  if (filters.search) {
+    where.OR = [
+      { email: { contains: filters.search, mode: "insensitive" } },
+      { firstName: { contains: filters.search, mode: "insensitive" } },
+      { lastName: { contains: filters.search, mode: "insensitive" } },
+      { phone: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: filters.limit,
+    include: {
+      _count: {
+        select: {
+          beneficiaries: true,
+          transfers: true,
+          connectedWallets: true,
+          kycVerifications: true,
+        },
+      },
+    },
+  });
+
+  return users.map((user) => ({
+    ...toPublicUser(user),
+    beneficiariesCount: user._count.beneficiaries,
+    transfersCount: user._count.transfers,
+    connectedWalletsCount: user._count.connectedWallets,
+    kycSubmissionsCount: user._count.kycVerifications,
+  }));
+};
 
 export const getAdminUser = async (userId: string) => {
   const user = await prisma.user.findUnique({
