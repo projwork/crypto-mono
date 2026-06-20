@@ -240,3 +240,14 @@ export interface TimelineEntry {
   metadata: unknown;
   createdAt: string;
 }
+
+export interface UserNotification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  data: Record<string, unknown> | null;
+  transferId?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
