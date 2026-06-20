@@ -56,7 +56,7 @@ export default function MetaMaskAuthPage() {
           Sign in with Wallet
         </h2>
         <p className="mt-3 text-slate-500 font-medium">
-          Connect your MetaMask to access DiasporaPay.
+          Connect your MetaMask to access LagerPay.
         </p>
       </div>
 
@@ -90,7 +90,7 @@ export default function MetaMaskAuthPage() {
           </Button>
 
           <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-            By connecting your wallet, you agree to DiasporaPay's <br />
+            By connecting your wallet, you agree to LagerPay's <br />
             <Link href="/terms" className="font-bold text-slate-500 hover:text-indigo-600">Terms of Service</Link>
           </p>
         </div>

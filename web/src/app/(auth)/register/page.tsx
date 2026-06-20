@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
-import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { PasswordInput } from "@/components/ui/PasswordInput";
-import { ApiError } from "@/lib/api/client";
-import { getPostAuthRoute } from "@/lib/auth/routing";
-import { useAuth } from "@/lib/auth/AuthContext";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Alert } from '@/components/ui/Alert';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { ApiError } from '@/lib/api/client';
+import { getPostAuthRoute } from '@/lib/auth/routing';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    country: "Switzerland",
-    password: "",
-    confirmPassword: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    country: 'Switzerland',
+    password: '',
+    confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -37,12 +37,12 @@ export default function RegisterPage() {
     setError(null);
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match. Please re-enter your password.");
+      setError('Passwords do not match. Please re-enter your password.');
       return;
     }
 
     if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError('Password must be at least 8 characters.');
       return;
     }
 
@@ -50,10 +50,12 @@ export default function RegisterPage() {
     try {
       const { confirmPassword: _, ...payload } = formData;
       await register(payload);
-      router.replace("/kyc/submit");
+      router.replace('/kyc/submit');
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Unable to create account. Please try again.",
+        err instanceof ApiError
+          ? err.message
+          : 'Unable to create account. Please try again.',
       );
     } finally {
       setSubmitting(false);
@@ -66,8 +68,8 @@ export default function RegisterPage() {
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">
           Create Account
         </h2>
-        <p className="mt-2 text-xs font-medium text-slate-500">
-          Join LagerPay to start sending USDC to Ethiopia in minutes.
+        <p className="mt-3 text-slate-500 font-medium">
+          Join LagerPay to start sending USDC today.
         </p>
       </div>
 
@@ -80,7 +82,9 @@ export default function RegisterPage() {
               label="First Name"
               placeholder="Abebe"
               value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, firstName: e.target.value })
+              }
               required
               className="rounded-lg h-10 text-sm"
             />
@@ -88,7 +92,9 @@ export default function RegisterPage() {
               label="Last Name"
               placeholder="Bekele"
               value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, lastName: e.target.value })
+              }
               required
               className="rounded-lg h-10 text-sm"
             />
@@ -99,7 +105,9 @@ export default function RegisterPage() {
             type="email"
             placeholder="you@example.com"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
             className="rounded-lg h-10 text-sm"
           />
@@ -109,7 +117,9 @@ export default function RegisterPage() {
             type="tel"
             placeholder="+41 79 000 00 00"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
             required
             className="rounded-lg h-10 text-sm"
           />
@@ -119,25 +129,68 @@ export default function RegisterPage() {
             placeholder="••••••••"
             autoComplete="new-password"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
-            className="rounded-lg h-10 text-sm"
+            minLength={8}
+            className="rounded-xl h-11"
+            hint="At least 8 characters"
           />
 
-          <p className="text-[10px] text-slate-500 leading-relaxed text-center px-4">
-            By creating an account, you agree to our{" "}
-            <Link href="/terms" className="text-indigo-600 font-bold">Terms of Service</Link> and{" "}
-            <Link href="/privacy" className="text-indigo-600 font-bold">Privacy Policy</Link>.
+          <PasswordInput
+            label="Confirm password"
+            placeholder="••••••••"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={(e) =>
+              setFormData({ ...formData, confirmPassword: e.target.value })
+            }
+            required
+            className="rounded-xl h-11"
+          />
+
+          <p className="text-[11px] text-slate-500 leading-relaxed text-center px-2">
+            By creating an account, you agree to our{' '}
+            <Link href="/terms" className="text-indigo-600 font-bold">
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-indigo-600 font-bold">
+              Privacy
+            </Link>
+            .
           </p>
 
-          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-lg h-11 font-bold mt-2 text-sm" loading={submitting}>
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2"
+            loading={submitting}
+          >
             Create Account
           </Button>
         </form>
+
+        {/* <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center" aria-hidden="true">
+            <div className="w-full border-t border-slate-100" />
+          </div>
+          <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
+            <span className="bg-white px-4 text-slate-400">or join with</span>
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <Link href="/metamask" className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 h-12 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+            <span className="text-lg">🦊</span>
+            Connect MetaMask
+          </Link>
+        </div> */}
       </div>
 
-      <p className="mt-8 text-center text-xs font-medium text-slate-500">
-        Already have an account?{" "}
+      <p className="mt-8 text-center text-sm font-medium text-slate-500">
+        Already have an account?{' '}
         <Link
           href="/login"
           className="font-bold text-indigo-600 hover:text-indigo-500"

@@ -117,7 +117,7 @@ export default function MetaMaskConnectPage() {
             Install MetaMask Extension
           </h2>
           <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
-            To securely connect your funds to DiasporaPay, you need to set up a Web3 browser
+            To securely connect your funds to LagerPay, you need to set up a Web3 browser
             extension.
           </p>
         </div>
@@ -190,8 +190,8 @@ export default function MetaMaskConnectPage() {
         </h2>
         <p className="mt-3 text-slate-500 dark:text-slate-400 font-medium">
           {success
-            ? "Your wallet has been securely connected to DiasporaPay. Redirecting…"
-            : "Securely connect your MetaMask wallet to access DiasporaPay."}
+            ? "Your wallet has been securely connected to LagerPay. Redirecting…"
+            : "Securely connect your MetaMask wallet to access LagerPay."}
         </p>
       </div>
 
@@ -252,7 +252,7 @@ export default function MetaMaskConnectPage() {
               </Button>
 
               <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-relaxed max-w-sm">
-                By connecting your wallet, you agree to DiasporaPay's{" "}
+                By connecting your wallet, you agree to LagerPay's{" "}
                 <Link href="/terms" className="font-bold text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400">
                   Terms of Service
                 </Link>

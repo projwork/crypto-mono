@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "./nav";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { cn } from '@/lib/utils';
+import { NAV_ITEMS } from './nav';
 
 function Logo() {
   return (
@@ -21,8 +21,10 @@ function Logo() {
         </svg>
       </span>
       <div className="leading-tight">
-        <p className="text-sm font-bold text-slate-900 dark:text-white">LagerPay</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">USDC → ETB</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          LagerPay
+        </p>
+        <p className="text-[11px] text-slate-400">Crypto → ETB</p>
       </div>
     </Link>
   );
@@ -43,20 +45,25 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {items.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
                 active
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100",
+                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100',
               )}
             >
-              <span className={cn("h-4 w-4", active ? "text-indigo-600 dark:text-indigo-400" : "")}>
+              <span
+                className={cn(
+                  'h-4 w-4',
+                  active ? 'text-indigo-600 dark:text-indigo-400' : '',
+                )}
+              >
                 {item.icon}
               </span>
               {item.label}
@@ -64,12 +71,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      
+
       {/* Updated Help Box with PDF messaging */}
       <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
-        <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider dark:text-slate-200">Security Notice</p>
+        <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider dark:text-slate-200">
+          Security Notice
+        </p>
         <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-          Funds are protected through advanced multi-signature custody and real-time settlement.
+          Funds are protected through advanced multi-signature custody and
+          real-time settlement.
         </p>
       </div>
     </div>

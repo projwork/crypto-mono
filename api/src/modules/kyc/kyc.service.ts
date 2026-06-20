@@ -12,6 +12,26 @@ export interface KycFileUrls {
   selfieUrl?: string;
 }
 
+/** Derive verification tier from submitted documents (never downgrade below doc evidence). */
+export const resolveVerificationTier = (
+  input: SubmitKycInput,
+  files: KycFileUrls,
+): KycTier => {
+  const hasId = Boolean(
+    files.passportUrl ?? files.nationalIdUrl ?? input.passportUrl ?? input.nationalIdUrl,
+  );
+  const hasSelfie = Boolean(files.selfieUrl ?? input.selfieUrl);
+  const hasTier3Extras = Boolean(
+    input.proofOfAddressUrl?.trim() && input.sourceOfFunds?.trim(),
+  );
+
+  if (hasId && hasSelfie) {
+    return hasTier3Extras ? KycTier.TIER_3 : KycTier.TIER_2;
+  }
+
+  return input.tier ?? KycTier.TIER_1;
+};
+
 export const toPublicKyc = (kyc: KycVerification) => ({
   id: kyc.id,
   tier: kyc.tier,
@@ -73,14 +93,42 @@ export const getUserTransferLimit = async (userId: string): Promise<TransferLimi
 };
 
 export const getMyKyc = async (userId: string) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw AppError.notFound("User not found");
+  }
+
   const latest = await prisma.kycVerification.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+
+  const approvedVerification = await prisma.kycVerification.findFirst({
+    where: { userId, status: KycStatus.APPROVED },
+    orderBy: { reviewedAt: "desc" },
+  });
+
   const limit = await getUserTransferLimit(userId);
 
+  let verification = latest;
+  let latestApplication: KycVerification | null = null;
+
+  if (user.kycStatus === KycStatus.APPROVED && approvedVerification) {
+    verification = approvedVerification;
+    if (
+      latest &&
+      latest.id !== approvedVerification.id &&
+      (latest.status === KycStatus.PENDING || latest.status === KycStatus.REJECTED)
+    ) {
+      latestApplication = latest;
+    }
+  } else if (latest && latest.status !== KycStatus.APPROVED) {
+    latestApplication = latest;
+  }
+
   return {
-    verification: latest ? toPublicKyc(latest) : null,
+    verification: verification ? toPublicKyc(verification) : null,
+    latestApplication: latestApplication ? toPublicKyc(latestApplication) : null,
     tier: limit.tier,
     status: limit.kycStatus,
     limit,
@@ -97,7 +145,12 @@ export const submitKyc = async (
   input: SubmitKycInput,
   files: KycFileUrls,
 ) => {
-  const tier = input.tier ?? KycTier.TIER_2;
+  const tier = resolveVerificationTier(input, files);
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw AppError.notFound("User not found");
+  }
 
   const verification = await prisma.kycVerification.create({
     data: {
@@ -112,11 +165,13 @@ export const submitKyc = async (
     },
   });
 
-  // Mark the user as pending review.
-  await prisma.user.update({
-    where: { id: userId },
-    data: { kycStatus: KycStatus.PENDING },
-  });
+  // Tier upgrades: keep the user APPROVED at their current tier while admin reviews.
+  if (user.kycStatus !== KycStatus.APPROVED) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { kycStatus: KycStatus.PENDING },
+    });
+  }
 
   return toPublicKyc(verification);
 };
@@ -189,8 +244,17 @@ export const rejectKyc = async (adminId: string, verificationId: string, reason:
     throw AppError.notFound("KYC verification not found");
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.kycVerification.update({
+  const priorApproved = await prisma.kycVerification.findFirst({
+    where: {
+      userId: verification.userId,
+      status: KycStatus.APPROVED,
+      id: { not: verificationId },
+    },
+    orderBy: { reviewedAt: "desc" },
+  });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const rejected = await tx.kycVerification.update({
       where: { id: verificationId },
       data: {
         status: KycStatus.REJECTED,
@@ -198,19 +262,36 @@ export const rejectKyc = async (adminId: string, verificationId: string, reason:
         reviewedAt: new Date(),
         rejectionReason: reason,
       },
-    }),
-    prisma.user.update({
-      where: { id: verification.userId },
-      data: { kycStatus: KycStatus.REJECTED },
-    }),
-  ]);
+    });
+
+    if (priorApproved) {
+      await tx.user.update({
+        where: { id: verification.userId },
+        data: {
+          kycStatus: KycStatus.APPROVED,
+          kycTier: priorApproved.tier,
+        },
+      });
+    } else {
+      await tx.user.update({
+        where: { id: verification.userId },
+        data: { kycStatus: KycStatus.REJECTED },
+      });
+    }
+
+    return rejected;
+  });
 
   await logEvent({
     actorId: adminId,
     action: "KYC_REJECTED",
     entityType: "KycVerification",
     entityId: verificationId,
-    metadata: { userId: verification.userId, reason },
+    metadata: {
+      userId: verification.userId,
+      reason,
+      upgradeRejection: Boolean(priorApproved),
+    },
   });
 
   return toPublicKyc(updated);
