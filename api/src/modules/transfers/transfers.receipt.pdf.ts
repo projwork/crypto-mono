@@ -20,7 +20,7 @@ export const generateReceiptPdf = async (
       doc.font("Helvetica").text(value);
     };
 
-    doc.font("Helvetica-Bold").fontSize(22).text("DiasporaPay Transfer Receipt", {
+    doc.font("Helvetica-Bold").fontSize(22).text("LagerPay Transfer Receipt", {
       align: "center",
     });
     doc.moveDown(0.5);

@@ -21,7 +21,7 @@ function Logo() {
         </svg>
       </span>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">NileRemit</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">LagerPay</p>
         <p className="text-[11px] text-slate-400">Crypto → ETB</p>
       </div>
     </Link>

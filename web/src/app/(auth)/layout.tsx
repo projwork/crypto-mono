@@ -35,7 +35,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                 />
               </svg>
             </span>
-            <span className="text-xl font-bold tracking-tight">DiasporaPay</span>
+            <span className="text-xl font-bold tracking-tight">LagerPay</span>
           </Link>
         </div>
 
@@ -95,7 +95,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                     <path d="M12 2v20M7 6l5-4 5 4M7 18l5 4 5-4" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
-                <span className="text-xl font-bold tracking-tight text-slate-900">DiasporaPay</span>
+                <span className="text-xl font-bold tracking-tight text-slate-900">LagerPay</span>
               </Link>
            </div>
            {children}

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NileRemit — Crypto to ETB Remittance",
+  title: "LagerPay — Crypto to ETB Remittance",
   description:
     "Send crypto from Switzerland and deliver Ethiopian Birr to your loved ones — fast, transparent, and secure.",
 };

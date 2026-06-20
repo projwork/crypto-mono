@@ -180,7 +180,7 @@ export default function KycStatusPage() {
   return (
     <div className="min-h-screen bg-[#030922] text-white font-sans antialiased selection:bg-blue-500/30 flex flex-col justify-between">
       
-      {/* NileRemit Branded App Header Header */}
+      {/* LagerPay Branded App Header */}
       <header className="mx-auto w-full max-w-7xl px-6 py-6 flex items-center justify-between border-b border-slate-900/40">
         <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-600 text-white shadow-sm">
@@ -195,7 +195,7 @@ export default function KycStatusPage() {
             </svg>
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-white">NileRemit</p>
+            <p className="text-sm font-semibold text-white">LagerPay</p>
             <p className="text-[11px] text-slate-400">Crypto → ETB</p>
           </div>
         </Link>

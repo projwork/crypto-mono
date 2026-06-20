@@ -24,7 +24,7 @@ export function Footer() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-400 sm:flex-row sm:justify-between">
-          <p>© 2026 DiasporaPay. Secure Institutional Grade Remittance.</p>
+          <p>© 2026 LagerPay. Secure Institutional Grade Remittance.</p>
           <div className="flex gap-4">
              <span>v2.4.0</span>
              <span>ETH-L2-Optimized</span>
