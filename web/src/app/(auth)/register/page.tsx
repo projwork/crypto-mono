@@ -61,57 +61,57 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-          Create account
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          Create Account
         </h2>
-        <p className="mt-3 text-slate-500 font-medium">
-          Join DiasporaPay to start sending USDC today.
+        <p className="mt-2 text-xs font-medium text-slate-500">
+          Join LagerPay to start sending USDC to Ethiopia in minutes.
         </p>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
+      <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert tone="error">{error}</Alert>}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Input
-              label="First name"
+              label="First Name"
               placeholder="Abebe"
               value={formData.firstName}
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
               required
-              className="rounded-xl h-11"
+              className="rounded-lg h-10 text-sm"
             />
             <Input
-              label="Last name"
+              label="Last Name"
               placeholder="Bekele"
               value={formData.lastName}
               onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
               required
-              className="rounded-xl h-11"
+              className="rounded-lg h-10 text-sm"
             />
           </div>
 
           <Input
-            label="Email address"
+            label="Email Address"
             type="email"
             placeholder="you@example.com"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
-            className="rounded-xl h-11"
+            className="rounded-lg h-10 text-sm"
           />
 
           <Input
-            label="Phone number"
+            label="Phone Number"
             type="tel"
-            placeholder="+41 79 123 45 67"
+            placeholder="+41 79 000 00 00"
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             required
-            className="rounded-xl h-11"
+            className="rounded-lg h-10 text-sm"
           />
 
           <PasswordInput
@@ -121,50 +121,22 @@ export default function RegisterPage() {
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
-            minLength={8}
-            className="rounded-xl h-11"
-            hint="At least 8 characters"
+            className="rounded-lg h-10 text-sm"
           />
 
-          <PasswordInput
-            label="Confirm password"
-            placeholder="••••••••"
-            autoComplete="new-password"
-            value={formData.confirmPassword}
-            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-            required
-            className="rounded-xl h-11"
-          />
-
-          <p className="text-[11px] text-slate-500 leading-relaxed text-center px-2">
+          <p className="text-[10px] text-slate-500 leading-relaxed text-center px-4">
             By creating an account, you agree to our{" "}
-            <Link href="/terms" className="text-indigo-600 font-bold">Terms</Link> and{" "}
-            <Link href="/privacy" className="text-indigo-600 font-bold">Privacy</Link>.
+            <Link href="/terms" className="text-indigo-600 font-bold">Terms of Service</Link> and{" "}
+            <Link href="/privacy" className="text-indigo-600 font-bold">Privacy Policy</Link>.
           </p>
 
-          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2" loading={submitting}>
+          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-lg h-11 font-bold mt-2 text-sm" loading={submitting}>
             Create Account
           </Button>
         </form>
-
-        <div className="relative mt-6">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-slate-100" />
-          </div>
-          <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
-            <span className="bg-white px-4 text-slate-400">or join with</span>
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <Link href="/metamask" className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 h-12 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-            <span className="text-lg">🦊</span>
-            Connect MetaMask
-          </Link>
-        </div>
       </div>
 
-      <p className="mt-8 text-center text-sm font-medium text-slate-500">
+      <p className="mt-8 text-center text-xs font-medium text-slate-500">
         Already have an account?{" "}
         <Link
           href="/login"

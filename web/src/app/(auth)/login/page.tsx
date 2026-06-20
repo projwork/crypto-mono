@@ -45,75 +45,64 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-          Welcome back
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome Back
         </h2>
-        <p className="mt-3 text-slate-500 font-medium">
-          Securely access your DiasporaPay account.
+        <p className="mt-2 text-xs font-medium text-slate-500">
+          Securely access your LagerPay account to manage remittances.
         </p>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {error && <Alert tone="error">{error}</Alert>}
+      <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="text-xs py-2">
+              <Alert tone="error">{error}</Alert>
+            </div>
+          )}
 
           <Input
-            label="Email address"
+            label="Email Address"
             type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
+            placeholder="name@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded-xl h-12"
+            className="rounded-lg h-10 text-sm"
           />
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+               <label htmlFor="password" className="text-xs font-bold text-slate-700">Password</label>
+               <button type="button" className="text-[10px] font-bold text-indigo-600 hover:text-indigo-500 uppercase tracking-tight">
+                 Forgot Password?
+               </button>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="rounded-lg h-10 text-sm"
+            />
+          </div>
 
-          <PasswordInput
-            label="Password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="rounded-xl h-12"
-            labelAction={
-              <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-500">
-                Forgot?
-              </button>
-            }
-          />
-
-          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-xl h-12 font-bold mt-2" loading={submitting}>
+          <Button type="submit" size="lg" className="w-full bg-slate-950 text-white hover:bg-slate-800 rounded-lg h-11 font-bold mt-2 text-sm" loading={submitting}>
             Sign In
           </Button>
         </form>
-
-        <div className="relative mt-8">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-slate-100" />
-          </div>
-          <div className="relative flex justify-center text-xs font-bold uppercase tracking-widest">
-            <span className="bg-white px-4 text-slate-400">or continue with</span>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <Link href="/metamask" className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 h-12 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-             <span className="text-lg">🦊</span>
-             Connect MetaMask
-          </Link>
-        </div>
       </div>
 
-      <p className="mt-8 text-center text-sm font-medium text-slate-500">
+      <p className="mt-8 text-center text-xs font-medium text-slate-500">
         Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="font-bold text-indigo-600 hover:text-indigo-500"
         >
-          Create an account
+          Create account
         </Link>
       </p>
     </div>

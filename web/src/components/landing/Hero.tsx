@@ -22,9 +22,17 @@ export function Hero() {
                   Get Started
                 </Button>
               </Link>
-              <button className="flex items-center gap-2 text-sm font-semibold text-slate-900 hover:text-indigo-600">
-                View Demo
-              </button>
+              {/* Fixed: Added Link wrapper to provide navigation for the Demo action */}
+              {/* <Link href="/demo">
+                <button className="flex items-center gap-2 text-sm font-semibold text-slate-900 hover:text-indigo-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
+                      <path d="M8 5v14l11-7L8 5z" />
+                    </svg>
+                  </div>
+                  View Demo
+                </button>
+              </Link> */}
             </div>
           </div>
 
