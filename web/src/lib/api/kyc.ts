@@ -36,6 +36,9 @@ export const kycApi = {
     if (payload.tier) form.append("tier", payload.tier);
     if (payload.proofOfAddressUrl) form.append("proofOfAddressUrl", payload.proofOfAddressUrl);
     if (payload.sourceOfFunds) form.append("sourceOfFunds", payload.sourceOfFunds);
+    if (payload.passportUrl) form.append("passportUrl", payload.passportUrl);
+    if (payload.nationalIdUrl) form.append("nationalIdUrl", payload.nationalIdUrl);
+    if (payload.selfieUrl) form.append("selfieUrl", payload.selfieUrl);
     if (payload.passport) form.append("passport", payload.passport);
     if (payload.nationalId) form.append("nationalId", payload.nationalId);
     if (payload.selfie) form.append("selfie", payload.selfie);
