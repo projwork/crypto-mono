@@ -92,6 +92,12 @@ export default function KycPage() {
       const status = await kycApi.getStatus();
       setData(status);
       setSelectedTier(status.verification?.tier ?? status.tier ?? "TIER_2");
+      
+      if (status.verification) {
+      setProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
+      setSourceOfFunds(status.verification.sourceOfFunds ?? "");
+    }
+    
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load verification status.");
     } finally {
@@ -108,47 +114,53 @@ export default function KycPage() {
     setSubmitSuccess(false);
 
     if (selectedTier !== "TIER_1") {
-      if (!passport && !nationalId && !data?.verification?.passportUrl && !data?.verification?.nationalIdUrl) {
-        setSubmitError("Please upload a passport or national ID.");
-        return;
-      }
-      if (!selfie && !data?.verification?.selfieUrl) {
-        setSubmitError("Please upload a selfie.");
-        return;
-      }
+    if (!passport && !nationalId && !data?.verification?.passportUrl && !data?.verification?.nationalIdUrl) {
+      setSubmitError("Please upload a passport or national ID.");
+      return;
     }
+    if (!selfie && !data?.verification?.selfieUrl) {
+      setSubmitError("Please upload a selfie.");
+      return;
+    }
+  }
 
     if (selectedTier === "TIER_3") {
-      if (!proofOfAddressUrl.trim()) {
-        setSubmitError("Proof of address URL is required for Tier 3.");
-        return;
-      }
-      if (!sourceOfFunds.trim()) {
-        setSubmitError("Source of funds description is required for Tier 3.");
-        return;
-      }
+    // Check local state AND existing saved data
+    const hasProofOfAddress = proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl;
+    const hasSourceOfFunds = sourceOfFunds.trim() || data?.verification?.sourceOfFunds;
+
+    if (!hasProofOfAddress) {
+      setSubmitError("Proof of address URL is required for Tier 3.");
+      return;
     }
+    if (!hasSourceOfFunds) {
+      setSubmitError("Source of funds description is required for Tier 3.");
+      return;
+    }
+  }
 
     setSubmitting(true);
     try {
-      const payload: SubmitKycPayload = {
-        tier: selectedTier,
-        passport: passport ?? undefined,
-        nationalId: nationalId ?? undefined,
-        selfie: selfie ?? undefined,
-        proofOfAddressUrl: proofOfAddressUrl.trim() || undefined,
-        sourceOfFunds: sourceOfFunds.trim() || undefined,
-      };
+      // Inside handleSubmit function...
+    const payload: SubmitKycPayload = {
+      tier: selectedTier,
+      passport: passport ?? undefined,
+      nationalId: nationalId ?? undefined,
+      selfie: selfie ?? undefined,
+      proofOfAddressUrl: proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl || undefined,
+      sourceOfFunds: sourceOfFunds.trim() || data?.verification?.sourceOfFunds || undefined,
+    };
 
-      if (!payload.passport && data?.verification?.passportUrl) {
-        payload.passportUrl = data.verification.passportUrl;
-      }
-      if (!payload.nationalId && data?.verification?.nationalIdUrl) {
-        payload.nationalIdUrl = data.verification.nationalIdUrl;
-      }
-      if (!payload.selfie && data?.verification?.selfieUrl) {
-        payload.selfieUrl = data.verification.selfieUrl;
-      }
+    // FIX: Normalize URLs using uploadUrl() before sending to backend
+    if (!payload.passport && data?.verification?.passportUrl) {
+      payload.passportUrl = uploadUrl(data.verification.passportUrl) ?? undefined;
+    }
+    if (!payload.nationalId && data?.verification?.nationalIdUrl) {
+      payload.nationalIdUrl = uploadUrl(data.verification.nationalIdUrl) ?? undefined;
+    }
+    if (!payload.selfie && data?.verification?.selfieUrl) {
+      payload.selfieUrl = uploadUrl(data.verification.selfieUrl) ?? undefined;
+    }
 
       await kycApi.submit(payload);
       setSubmitSuccess(true);
@@ -470,8 +482,14 @@ export default function KycPage() {
                   </>
                 )}
 
-                <Button onClick={handleSubmit} loading={submitting} size="lg">
-                  Submit upgrade request
+                <Button 
+                  onClick={handleSubmit} 
+                  loading={submitting} 
+                  size="lg"
+                  // Disable button if the selected tier isn't actually an upgrade
+                  disabled={selectedTier === data.tier}
+                >
+                  {selectedTier === data.tier ? "Select a higher tier" : "Submit upgrade request"}
                 </Button>
               </CardContent>
             </Card>
@@ -519,7 +537,15 @@ export default function KycPage() {
               existingUrl={uploadUrl(verification?.selfieUrl)}
             />
 
-            <Button onClick={handleSubmit} loading={submitting} size="lg">
+            <Button 
+              onClick={() => {
+                // Ensure we submit with the CURRENT tier, not the selected upgrade tier
+                setSelectedTier(data.tier);
+                void handleSubmit();
+              }} 
+              loading={submitting} 
+              size="lg"
+            >
               Update documents
             </Button>
           </CardContent>
