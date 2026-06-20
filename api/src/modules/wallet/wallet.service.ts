@@ -1,14 +1,15 @@
 import crypto from "node:crypto";
 import {
   AssetType,
-  ChainType,
+  TransferStatus,
   type Transfer,
   type Wallet,
   type ConnectedWallet,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
-import type { ConnectWalletInput } from "./wallet.schemas.js";
+import type { ConnectWalletInput, SendFromWalletInput } from "./wallet.schemas.js";
+import { confirmBlockchainDeposit } from "../mock/mock.blockchain.service.js";
 
 /** Public deposit address shape — documented in CONTRACTS.md. */
 export const toDepositAddress = (wallet: Wallet) => ({
@@ -23,9 +24,11 @@ export type DepositAddress = ReturnType<typeof toDepositAddress>;
 
 /** Public connected wallet shape */
 export const toConnectedWallet = (wallet: ConnectedWallet) => ({
+  id: wallet.id,
   address: wallet.address,
   chain: wallet.chain,
   active: wallet.active,
+  createdAt: wallet.createdAt,
 });
 
 export type PublicConnectedWallet = ReturnType<typeof toConnectedWallet>;
@@ -171,26 +174,86 @@ export const connectWallet = async (
   return toConnectedWallet(newWallet);
 };
 
-export const getMyWallet = async (userId: string) => {
-  // Get user's active connected wallet(s) - prioritize most recent
-  const wallet = await prisma.connectedWallet.findFirst({
-    where: {
-      userId,
-      active: true,
-    },
+export const getMyWallets = async (userId: string) => {
+  const wallets = await prisma.connectedWallet.findMany({
+    where: { userId, active: true },
     orderBy: { createdAt: "desc" },
   });
 
-  if (!wallet) {
-    // Return null or 404? For consistency with other endpoints, return null object
+  return wallets.map(toConnectedWallet);
+};
+
+/** @deprecated Use getMyWallets — kept for internal callers expecting a single wallet. */
+export const getMyWallet = async (userId: string) => {
+  const wallets = await getMyWallets(userId);
+  return wallets[0] ?? null;
+};
+
+export const sendFromConnectedWallet = async (
+  userId: string,
+  input: SendFromWalletInput,
+) => {
+  const normalizedFrom = input.fromAddress.toLowerCase();
+
+  const connectedWallet = await prisma.connectedWallet.findFirst({
+    where: {
+      userId,
+      address: normalizedFrom,
+      active: true,
+    },
+  });
+
+  if (!connectedWallet) {
+    throw AppError.badRequest(
+      "Connected wallet not found or inactive. Connect MetaMask via POST /api/wallet/connect first.",
+    );
+  }
+
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: input.transferId, senderId: userId },
+    include: { wallet: true },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  if (transfer.status !== TransferStatus.AWAITING_CRYPTO) {
+    throw AppError.badRequest(
+      `Transfer must be AWAITING_CRYPTO to send (current: ${transfer.status})`,
+    );
+  }
+
+  const { depositAddress } = await getOrCreateDepositAddress(userId, input.transferId);
+
+  const send = {
+    transferId: transfer.id,
+    reference: transfer.reference,
+    fromAddress: connectedWallet.address,
+    toAddress: depositAddress.address,
+    amount: transfer.sendAmount.toString(),
+    asset: depositAddress.asset,
+    chain: connectedWallet.chain,
+    network: "Ethereum",
+  };
+
+  if (!input.txHash) {
     return {
-      address: "",
-      chain: ChainType.ETHEREUM,
-      active: false,
+      status: "READY_TO_SEND" as const,
+      send,
     };
   }
 
-  return toConnectedWallet(wallet);
+  const confirmation = await confirmBlockchainDeposit({
+    transferId: transfer.id,
+    txHash: input.txHash,
+  });
+
+  return {
+    status: "SENT" as const,
+    send,
+    confirmation,
+  };
 };
 
 export const disconnectWallet = async (userId: string) => {

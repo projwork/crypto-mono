@@ -29,9 +29,11 @@ export const walletSchemas = {
   ConnectedWallet: {
     type: "object",
     properties: {
+      id: { type: "string", example: "cwallet_xyz123" },
       address: { type: "string", example: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bEb" },
       chain: { $ref: "#/components/schemas/ChainType" },
       active: { type: "boolean", example: true },
+      createdAt: { type: "string", format: "date-time" },
     },
   },
   DepositAddressRequest: {
@@ -94,8 +96,61 @@ export const walletSchemas = {
       data: {
         type: "object",
         properties: {
-          wallet: {
-            oneOf: [{ $ref: "#/components/schemas/ConnectedWallet" }, { type: "null" }],
+          wallets: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ConnectedWallet" },
+          },
+        },
+      },
+    },
+  },
+  SendFromWalletRequest: {
+    type: "object",
+    required: ["transferId", "fromAddress"],
+    properties: {
+      transferId: { type: "string", example: "clxyz_transfer_id" },
+      fromAddress: {
+        type: "string",
+        example: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bEb",
+        description: "Must match an active connected wallet from GET /api/wallet/me",
+      },
+      txHash: {
+        type: "string",
+        example: "0xabc123...",
+        description: "Optional. Submit after MetaMask broadcast to record on-chain send.",
+      },
+    },
+  },
+  WalletSendDetails: {
+    type: "object",
+    properties: {
+      transferId: { type: "string" },
+      reference: { type: "string", example: "TX0001" },
+      fromAddress: { type: "string" },
+      toAddress: { type: "string", description: "Platform deposit address" },
+      amount: { type: "string", example: "100" },
+      asset: { $ref: "#/components/schemas/AssetType" },
+      chain: { $ref: "#/components/schemas/ChainType" },
+      network: { type: "string", example: "Ethereum" },
+    },
+  },
+  WalletSendResponse: {
+    type: "object",
+    properties: {
+      success: { type: "boolean", enum: [true] },
+      data: {
+        type: "object",
+        properties: {
+          status: { type: "string", enum: ["READY_TO_SEND", "SENT"] },
+          send: { $ref: "#/components/schemas/WalletSendDetails" },
+          confirmation: {
+            type: "object",
+            nullable: true,
+            properties: {
+              txHash: { type: "string" },
+              confirmations: { type: "integer", example: 12 },
+              status: { type: "string", example: "CONFIRMED" },
+            },
           },
         },
       },
@@ -160,15 +215,59 @@ export const walletPaths = {
   "/api/wallet/me": {
     get: {
       tags: ["Wallet"],
-      summary: "Get my connected wallet",
+      summary: "List my connected wallets",
+      description:
+        "Returns all active MetaMask (or other) wallet addresses linked to the authenticated user.",
       security: [{ bearerAuth: [] }],
       responses: {
         "200": {
-          description: "Connected wallet or null",
+          description: "Connected wallet addresses (empty array if none)",
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/WalletMeResponse" },
             },
+          },
+        },
+        ...authResponses,
+      },
+    },
+  },
+  "/api/wallet/send": {
+    post: {
+      tags: ["Wallet"],
+      summary: "Send crypto from connected wallet",
+      description:
+        "Step 1: call without `txHash` to get send details (from → deposit address, amount, asset). " +
+        "Step 2: after broadcasting via MetaMask, call again with `txHash` to record the on-chain send " +
+        "and confirm the deposit (transfer moves to BLOCKCHAIN_CONFIRMED).",
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/SendFromWalletRequest" },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Send prepared or submitted",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/WalletSendResponse" },
+            },
+          },
+        },
+        "400": {
+          description: "Wallet not connected, wrong transfer state, or validation error",
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/ErrorEnvelope" } },
+          },
+        },
+        "404": {
+          description: "Transfer not found",
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/ErrorEnvelope" } },
           },
         },
         ...authResponses,

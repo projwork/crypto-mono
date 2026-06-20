@@ -13,6 +13,7 @@ import { fxService } from "../fx/fx.service.js";
 import { getUserTransferLimit } from "../kyc/kyc.service.js";
 import {
   getOrCreateDepositAddress,
+  getMyWallets,
   toDepositAddress,
 } from "../wallet/wallet.service.js";
 import {
@@ -234,22 +235,12 @@ export const confirmWallet = async (userId: string, transferId: string) => {
     );
   }
 
-  // Check if there's an active connected wallet for this user
-  const connectedWallet = await prisma.connectedWallet.findFirst({
-    where: { userId, active: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const connectedWallets = await getMyWallets(userId);
 
-  // For now, just return transfer + connected wallet info
   return {
     transfer: toPublicTransfer(transfer as any),
-    connectedWallet: connectedWallet
-      ? {
-          address: connectedWallet.address,
-          chain: connectedWallet.chain,
-          active: connectedWallet.active,
-        }
-      : null,
+    connectedWallets,
+    primaryConnectedWallet: connectedWallets[0] ?? null,
     depositWallet: transfer.wallet
       ? {
           address: transfer.wallet.address,
