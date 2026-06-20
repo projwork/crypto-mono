@@ -26,15 +26,14 @@ function tierLabel(tier: KycTier): string {
   return humanize(tier.replace("TIER_", "Tier "));
 }
 
-// FIX (Bug 2): Helper to pick the initial selectedTier based on status/tier.
-// For approved users who can still upgrade, pre-select the next tier up so the
-// upgrade form is immediately actionable instead of showing "Select a higher tier".
 function initialSelectedTier(status: KycStatusResponse): KycTier {
   if (status.status === "APPROVED" && status.tier !== "TIER_3") {
     return status.tier === "TIER_1" ? "TIER_2" : "TIER_3";
   }
   return status.verification?.tier ?? status.tier ?? "TIER_2";
 }
+
+const TIER_ORDER: Record<KycTier, number> = { TIER_1: 1, TIER_2: 2, TIER_3: 3 };
 
 function TierCard({
   info,
@@ -80,6 +79,93 @@ function TierCard({
   );
 }
 
+// Reusable document fields used in multiple form sections.
+function DocumentFields({
+  tier,
+  passport,
+  onPassport,
+  nationalId,
+  onNationalId,
+  selfie,
+  onSelfie,
+  proofOfAddressUrl,
+  onProofOfAddressUrl,
+  sourceOfFunds,
+  onSourceOfFunds,
+  existingPassportUrl,
+  existingNationalIdUrl,
+  existingSelfieUrl,
+}: {
+  tier: KycTier;
+  passport: File | null;
+  onPassport: (f: File | null) => void;
+  nationalId: File | null;
+  onNationalId: (f: File | null) => void;
+  selfie: File | null;
+  onSelfie: (f: File | null) => void;
+  proofOfAddressUrl: string;
+  onProofOfAddressUrl: (v: string) => void;
+  sourceOfFunds: string;
+  onSourceOfFunds: (v: string) => void;
+  existingPassportUrl?: string | null;
+  existingNationalIdUrl?: string | null;
+  existingSelfieUrl?: string | null;
+}) {
+  return (
+    <>
+      <FileInput
+        label="Passport"
+        hint="Upload your passport photo page"
+        value={passport}
+        onChange={onPassport}
+        existingUrl={uploadUrl(existingPassportUrl) ?? undefined}
+      />
+      <FileInput
+        label="National ID"
+        hint="Or upload a national ID card"
+        value={nationalId}
+        onChange={onNationalId}
+        existingUrl={uploadUrl(existingNationalIdUrl) ?? undefined}
+      />
+      <FileInput
+        label="Selfie"
+        hint="A clear photo of your face holding your ID"
+        value={selfie}
+        onChange={onSelfie}
+        existingUrl={uploadUrl(existingSelfieUrl) ?? undefined}
+      />
+
+      {tier === "TIER_3" && (
+        <>
+          <Input
+            label="Proof of address URL"
+            placeholder="https://…"
+            hint="Link to a utility bill or bank statement"
+            value={proofOfAddressUrl}
+            onChange={(e) => onProofOfAddressUrl(e.target.value)}
+          />
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="sourceOfFunds"
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Source of funds
+            </label>
+            <textarea
+              id="sourceOfFunds"
+              rows={3}
+              placeholder="Describe the origin of funds you plan to transfer…"
+              value={sourceOfFunds}
+              onChange={(e) => onSourceOfFunds(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 export default function KycPage() {
   const { refresh } = useAuth();
   const router = useRouter();
@@ -89,15 +175,26 @@ export default function KycPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Upgrade form state
   const [selectedTier, setSelectedTier] = useState<KycTier>("TIER_2");
-  const [passport, setPassport] = useState<File | null>(null);
-  const [nationalId, setNationalId] = useState<File | null>(null);
-  const [selfie, setSelfie] = useState<File | null>(null);
-  const [proofOfAddressUrl, setProofOfAddressUrl] = useState("");
-  const [sourceOfFunds, setSourceOfFunds] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [upgradePassport, setUpgradePassport] = useState<File | null>(null);
+  const [upgradeNationalId, setUpgradeNationalId] = useState<File | null>(null);
+  const [upgradeSelfie, setUpgradeSelfie] = useState<File | null>(null);
+  const [upgradeProofOfAddressUrl, setUpgradeProofOfAddressUrl] = useState("");
+  const [upgradeSourceOfFunds, setUpgradeSourceOfFunds] = useState("");
+  const [upgradeSubmitting, setUpgradeSubmitting] = useState(false);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+
+  // Update-documents form state (for all approved users, any tier)
+  const [updatePassport, setUpdatePassport] = useState<File | null>(null);
+  const [updateNationalId, setUpdateNationalId] = useState<File | null>(null);
+  const [updateSelfie, setUpdateSelfie] = useState<File | null>(null);
+  const [updateProofOfAddressUrl, setUpdateProofOfAddressUrl] = useState("");
+  const [updateSourceOfFunds, setUpdateSourceOfFunds] = useState("");
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,12 +202,13 @@ export default function KycPage() {
     try {
       const status = await kycApi.getStatus();
       setData(status);
-      // FIX (Bug 2): use the helper so approved users see the next tier pre-selected.
       setSelectedTier(initialSelectedTier(status));
 
       if (status.verification) {
-        setProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
-        setSourceOfFunds(status.verification.sourceOfFunds ?? "");
+        setUpgradeProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
+        setUpgradeSourceOfFunds(status.verification.sourceOfFunds ?? "");
+        setUpdateProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
+        setUpdateSourceOfFunds(status.verification.sourceOfFunds ?? "");
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load verification status.");
@@ -133,10 +231,8 @@ export default function KycPage() {
           // ignore polling errors and retry
         }
       }, 5000);
-
       return () => window.clearInterval(intervalId);
     }
-
     return undefined;
   }, [data]);
 
@@ -147,7 +243,7 @@ export default function KycPage() {
         try {
           await refresh();
         } catch {
-          // ignore refresh errors and still redirect
+          // ignore
         } finally {
           router.replace("/dashboard");
         }
@@ -155,62 +251,54 @@ export default function KycPage() {
     }
   }, [data, loading, router, refresh]);
 
-  // FIX (Bug 1): Accept an optional tierOverride so callers that need to force a
-  // specific tier (e.g. "Update documents" which must always use the current tier)
-  // can do so without relying on a setState call that hasn't been flushed yet.
-  const handleSubmit = async (tierOverride?: KycTier) => {
-    setSubmitError(null);
-    setSubmitSuccess(false);
-
-    const tier = tierOverride ?? selectedTier;
+  // Shared validation + submit logic. tierOverride is always passed explicitly
+  // so we never depend on React state that may not have flushed yet.
+  const submitKyc = async (
+    tier: KycTier,
+    files: { passport: File | null; nationalId: File | null; selfie: File | null },
+    extra: { proofOfAddressUrl: string; sourceOfFunds: string },
+    setErr: (e: string | null) => void,
+    setOk: (v: boolean) => void,
+    setBusy: (v: boolean) => void,
+  ) => {
+    setErr(null);
+    setOk(false);
 
     if (tier !== "TIER_1") {
-      // FIX (Bug 3): mirror the same fallback used when building the payload so
-      // existing uploaded docs count as satisfying the validation guard.
       const hasIdDoc =
-        passport ||
-        nationalId ||
+        files.passport ||
+        files.nationalId ||
         data?.verification?.passportUrl ||
         data?.verification?.nationalIdUrl;
-
       if (!hasIdDoc) {
-        setSubmitError("Please upload a passport or national ID.");
+        setErr("Please upload a passport or national ID.");
         return;
       }
-
-      const hasSelfie = selfie || data?.verification?.selfieUrl;
+      const hasSelfie = files.selfie || data?.verification?.selfieUrl;
       if (!hasSelfie) {
-        setSubmitError("Please upload a selfie.");
+        setErr("Please upload a selfie.");
         return;
       }
     }
 
     if (tier === "TIER_3") {
-      const hasProofOfAddress = proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl;
-      const hasSourceOfFunds = sourceOfFunds.trim() || data?.verification?.sourceOfFunds;
-
-      if (!hasProofOfAddress) {
-        setSubmitError("Proof of address URL is required for Tier 3.");
-        return;
-      }
-      if (!hasSourceOfFunds) {
-        setSubmitError("Source of funds description is required for Tier 3.");
-        return;
-      }
+      const hasProof = extra.proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl;
+      const hasFunds = extra.sourceOfFunds.trim() || data?.verification?.sourceOfFunds;
+      if (!hasProof) { setErr("Proof of address URL is required for Tier 3."); return; }
+      if (!hasFunds) { setErr("Source of funds description is required for Tier 3."); return; }
     }
 
-    setSubmitting(true);
+    setBusy(true);
     try {
       const payload: SubmitKycPayload = {
         tier,
-        passport: passport ?? undefined,
-        nationalId: nationalId ?? undefined,
-        selfie: selfie ?? undefined,
-        proofOfAddressUrl: proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl || undefined,
-        sourceOfFunds: sourceOfFunds.trim() || data?.verification?.sourceOfFunds || undefined,
+        passport: files.passport ?? undefined,
+        nationalId: files.nationalId ?? undefined,
+        selfie: files.selfie ?? undefined,
+        proofOfAddressUrl: extra.proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl || undefined,
+        sourceOfFunds: extra.sourceOfFunds.trim() || data?.verification?.sourceOfFunds || undefined,
       };
 
-      // Normalize URLs using uploadUrl() before sending to backend.
       if (!payload.passport && data?.verification?.passportUrl) {
         payload.passportUrl = uploadUrl(data.verification.passportUrl) ?? undefined;
       }
@@ -222,18 +310,36 @@ export default function KycPage() {
       }
 
       await kycApi.submit(payload);
-      setSubmitSuccess(true);
-      setPassport(null);
-      setNationalId(null);
-      setSelfie(null);
+      setOk(true);
       await load();
       await refresh();
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Submission failed. Please try again.");
+      setErr(err instanceof ApiError ? err.message : "Submission failed. Please try again.");
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
+
+  const handleUpgradeSubmit = () =>
+    submitKyc(
+      selectedTier,
+      { passport: upgradePassport, nationalId: upgradeNationalId, selfie: upgradeSelfie },
+      { proofOfAddressUrl: upgradeProofOfAddressUrl, sourceOfFunds: upgradeSourceOfFunds },
+      setUpgradeError,
+      setUpgradeSuccess,
+      setUpgradeSubmitting,
+    );
+
+  // Always submits with the user's current approved tier — never an upgrade tier.
+  const handleUpdateSubmit = (currentTier: KycTier) =>
+    submitKyc(
+      currentTier,
+      { passport: updatePassport, nationalId: updateNationalId, selfie: updateSelfie },
+      { proofOfAddressUrl: updateProofOfAddressUrl, sourceOfFunds: updateSourceOfFunds },
+      setUpdateError,
+      setUpdateSuccess,
+      setUpdateSubmitting,
+    );
 
   if (loading) {
     return (
@@ -256,10 +362,11 @@ export default function KycPage() {
   const verification = data.verification;
   const hasPendingReview = data.status === "PENDING" && verification !== null;
   const isApproved = data.status === "APPROVED";
-  const isRejected = data.status === "REJECTED";
   const showNewSubmissionForm = !isApproved && !hasPendingReview;
   const canUpgrade = isApproved && data.tier !== "TIER_3";
-  const canEditDocuments = isApproved;
+  // Show update-documents for ALL approved users regardless of tier.
+  const canUpdateDocuments = isApproved;
+
   const limitPct =
     data.limit.limitUsd && data.limit.limitUsd > 0
       ? Math.min(100, (data.limit.usedUsd / data.limit.limitUsd) * 100)
@@ -293,7 +400,7 @@ export default function KycPage() {
                 Your documents are under review. We&apos;ll notify you once approved.
               </Alert>
             )}
-            {data.status === "APPROVED" && (
+            {isApproved && (
               <Alert tone="success">
                 Your identity is verified. You can send transfers up to your tier limit.
               </Alert>
@@ -335,7 +442,7 @@ export default function KycPage() {
         </Card>
       </div>
 
-      {/* Tier selection / Upgrade */}
+      {/* ── First-time / rejected submission form ── */}
       {showNewSubmissionForm && (
         <>
           <div>
@@ -348,99 +455,61 @@ export default function KycPage() {
                   key={tier.tier}
                   info={tier}
                   selected={selectedTier === tier.tier}
-                  current={data.tier === tier.tier && data.status === "APPROVED"}
+                  current={data.tier === tier.tier && isApproved}
                   onSelect={() => setSelectedTier(tier.tier)}
                 />
               ))}
             </div>
           </div>
 
-          {/* Document upload — Tier 2+ */}
-          {selectedTier !== "TIER_1" && (
+          {selectedTier !== "TIER_1" ? (
             <Card>
               <CardHeader>
                 <CardTitle>Identity documents</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
-                {submitError && <Alert tone="error">{submitError}</Alert>}
-                {submitSuccess && (
+                {upgradeError && <Alert tone="error">{upgradeError}</Alert>}
+                {upgradeSuccess && (
                   <Alert tone="success">
                     Documents submitted successfully. Your verification is now pending review.
                   </Alert>
                 )}
-
-                <FileInput
-                  label="Passport"
-                  hint="Upload your passport photo page"
-                  value={passport}
-                  onChange={setPassport}
-                  existingUrl={uploadUrl(verification?.passportUrl)}
+                <DocumentFields
+                  tier={selectedTier}
+                  passport={upgradePassport}
+                  onPassport={setUpgradePassport}
+                  nationalId={upgradeNationalId}
+                  onNationalId={setUpgradeNationalId}
+                  selfie={upgradeSelfie}
+                  onSelfie={setUpgradeSelfie}
+                  proofOfAddressUrl={upgradeProofOfAddressUrl}
+                  onProofOfAddressUrl={setUpgradeProofOfAddressUrl}
+                  sourceOfFunds={upgradeSourceOfFunds}
+                  onSourceOfFunds={setUpgradeSourceOfFunds}
+                  existingPassportUrl={verification?.passportUrl}
+                  existingNationalIdUrl={verification?.nationalIdUrl}
+                  existingSelfieUrl={verification?.selfieUrl}
                 />
-                <FileInput
-                  label="National ID"
-                  hint="Or upload a national ID card"
-                  value={nationalId}
-                  onChange={setNationalId}
-                  existingUrl={uploadUrl(verification?.nationalIdUrl)}
-                />
-                <FileInput
-                  label="Selfie"
-                  hint="A clear photo of your face holding your ID"
-                  value={selfie}
-                  onChange={setSelfie}
-                  existingUrl={uploadUrl(verification?.selfieUrl)}
-                />
-
-                {selectedTier === "TIER_3" && (
-                  <>
-                    <Input
-                      label="Proof of address URL"
-                      placeholder="https://…"
-                      hint="Link to a utility bill or bank statement"
-                      value={proofOfAddressUrl}
-                      onChange={(e) => setProofOfAddressUrl(e.target.value)}
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        htmlFor="sourceOfFunds"
-                        className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                      >
-                        Source of funds
-                      </label>
-                      <textarea
-                        id="sourceOfFunds"
-                        rows={3}
-                        placeholder="Describe the origin of funds you plan to transfer…"
-                        value={sourceOfFunds}
-                        onChange={(e) => setSourceOfFunds(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <Button onClick={() => void handleSubmit()} loading={submitting} size="lg">
+                <Button onClick={() => void handleUpgradeSubmit()} loading={upgradeSubmitting} size="lg">
                   Submit for review
                 </Button>
               </CardContent>
             </Card>
-          )}
-
-          {selectedTier === "TIER_1" && (
+          ) : (
             <Card>
               <CardContent className="py-8">
                 <EmptyBlock
                   title="Tier 1 — Basic verification"
                   description="Your email and phone from registration satisfy Tier 1 requirements. Submit to activate your $500/month limit."
                   action={
-                    <Button onClick={() => void handleSubmit()} loading={submitting}>
+                    <Button onClick={() => void handleUpgradeSubmit()} loading={upgradeSubmitting}>
                       Activate Tier 1
                     </Button>
                   }
                 />
-                {submitError && (
+                {upgradeError && (
                   <div className="mt-4">
-                    <Alert tone="error">{submitError}</Alert>
+                    <Alert tone="error">{upgradeError}</Alert>
                   </div>
                 )}
               </CardContent>
@@ -449,7 +518,7 @@ export default function KycPage() {
         </>
       )}
 
-      {/* Upgrade to higher tier (for approved users) */}
+      {/* ── Upgrade to a higher tier (approved users who aren't at TIER_3) ── */}
       {canUpgrade && (
         <>
           <div>
@@ -461,145 +530,98 @@ export default function KycPage() {
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               {data.tiers
-                .filter((tier) => {
-                  const tierOrder = { TIER_1: 1, TIER_2: 2, TIER_3: 3 };
-                  return tierOrder[tier.tier] > tierOrder[data.tier];
-                })
-                .map((tier) => (
+                .filter((t) => TIER_ORDER[t.tier] > TIER_ORDER[data.tier])
+                .map((t) => (
                   <TierCard
-                    key={tier.tier}
-                    info={tier}
-                    selected={selectedTier === tier.tier}
+                    key={t.tier}
+                    info={t}
+                    selected={selectedTier === t.tier}
                     current={false}
-                    onSelect={() => setSelectedTier(tier.tier)}
+                    onSelect={() => setSelectedTier(t.tier)}
                   />
                 ))}
             </div>
           </div>
 
-          {/* Document upload for upgrade */}
-          {selectedTier !== "TIER_1" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Upgrade requirements</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {submitError && <Alert tone="error">{submitError}</Alert>}
-                {submitSuccess && (
-                  <Alert tone="success">
-                    Upgrade request submitted successfully. Your documents are now pending review.
-                  </Alert>
-                )}
-
-                <FileInput
-                  label="Passport"
-                  hint="Upload your passport photo page"
-                  value={passport}
-                  onChange={setPassport}
-                  existingUrl={uploadUrl(verification?.passportUrl)}
-                />
-                <FileInput
-                  label="National ID"
-                  hint="Or upload a national ID card"
-                  value={nationalId}
-                  onChange={setNationalId}
-                  existingUrl={uploadUrl(verification?.nationalIdUrl)}
-                />
-                <FileInput
-                  label="Selfie"
-                  hint="A clear photo of your face holding your ID"
-                  value={selfie}
-                  onChange={setSelfie}
-                  existingUrl={uploadUrl(verification?.selfieUrl)}
-                />
-
-                {selectedTier === "TIER_3" && (
-                  <>
-                    <Input
-                      label="Proof of address URL"
-                      placeholder="https://…"
-                      hint="Link to a utility bill or bank statement"
-                      value={proofOfAddressUrl}
-                      onChange={(e) => setProofOfAddressUrl(e.target.value)}
-                    />
-                    <div className="flex flex-col gap-1.5">
-                      <label
-                        htmlFor="sourceOfFunds"
-                        className="text-sm font-medium text-slate-700 dark:text-slate-300"
-                      >
-                        Source of funds
-                      </label>
-                      <textarea
-                        id="sourceOfFunds"
-                        rows={3}
-                        placeholder="Describe the origin of funds you plan to transfer…"
-                        value={sourceOfFunds}
-                        onChange={(e) => setSourceOfFunds(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <Button
-                  onClick={() => void handleSubmit()}
-                  loading={submitting}
-                  size="lg"
-                  disabled={selectedTier === data.tier}
-                >
-                  {selectedTier === data.tier ? "Select a higher tier" : "Submit upgrade request"}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Upgrade requirements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {upgradeError && <Alert tone="error">{upgradeError}</Alert>}
+              {upgradeSuccess && (
+                <Alert tone="success">
+                  Upgrade request submitted. Your documents are now pending review.
+                </Alert>
+              )}
+              <DocumentFields
+                tier={selectedTier}
+                passport={upgradePassport}
+                onPassport={setUpgradePassport}
+                nationalId={upgradeNationalId}
+                onNationalId={setUpgradeNationalId}
+                selfie={upgradeSelfie}
+                onSelfie={setUpgradeSelfie}
+                proofOfAddressUrl={upgradeProofOfAddressUrl}
+                onProofOfAddressUrl={setUpgradeProofOfAddressUrl}
+                sourceOfFunds={upgradeSourceOfFunds}
+                onSourceOfFunds={setUpgradeSourceOfFunds}
+                existingPassportUrl={verification?.passportUrl}
+                existingNationalIdUrl={verification?.nationalIdUrl}
+                existingSelfieUrl={verification?.selfieUrl}
+              />
+              <Button
+                onClick={() => void handleUpgradeSubmit()}
+                loading={upgradeSubmitting}
+                size="lg"
+                disabled={TIER_ORDER[selectedTier] <= TIER_ORDER[data.tier]}
+              >
+                {TIER_ORDER[selectedTier] <= TIER_ORDER[data.tier]
+                  ? "Select a higher tier"
+                  : `Upgrade to ${tierLabel(selectedTier)}`}
+              </Button>
+            </CardContent>
+          </Card>
         </>
       )}
 
-      {/* Edit documents (for approved users at max tier) */}
-      {canEditDocuments && !canUpgrade && (
+      {/* ── Update documents (ALL approved users, at their current tier) ── */}
+      {canUpdateDocuments && (
         <Card>
           <CardHeader>
             <CardTitle>Update documents</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            {submitError && <Alert tone="error">{submitError}</Alert>}
-            {submitSuccess && (
+            {updateError && <Alert tone="error">{updateError}</Alert>}
+            {updateSuccess && (
               <Alert tone="success">
                 Documents updated successfully. Your updates are now pending review.
               </Alert>
             )}
-
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              You can update your identity documents at any time. Leave a field empty to keep the existing document.
+              Update the documents on file for your current {tierLabel(data.tier)} verification.
+              Leave a field empty to keep the existing document.
             </p>
-
-            <FileInput
-              label="Passport"
-              hint="Upload your passport photo page"
-              value={passport}
-              onChange={setPassport}
-              existingUrl={uploadUrl(verification?.passportUrl)}
+            <DocumentFields
+              tier={data.tier}
+              passport={updatePassport}
+              onPassport={setUpdatePassport}
+              nationalId={updateNationalId}
+              onNationalId={setUpdateNationalId}
+              selfie={updateSelfie}
+              onSelfie={setUpdateSelfie}
+              proofOfAddressUrl={updateProofOfAddressUrl}
+              onProofOfAddressUrl={setUpdateProofOfAddressUrl}
+              sourceOfFunds={updateSourceOfFunds}
+              onSourceOfFunds={setUpdateSourceOfFunds}
+              existingPassportUrl={verification?.passportUrl}
+              existingNationalIdUrl={verification?.nationalIdUrl}
+              existingSelfieUrl={verification?.selfieUrl}
             />
-            <FileInput
-              label="National ID"
-              hint="Or upload a national ID card"
-              value={nationalId}
-              onChange={setNationalId}
-              existingUrl={uploadUrl(verification?.nationalIdUrl)}
-            />
-            <FileInput
-              label="Selfie"
-              hint="A clear photo of your face holding your ID"
-              value={selfie}
-              onChange={setSelfie}
-              existingUrl={uploadUrl(verification?.selfieUrl)}
-            />
-
-            {/* FIX (Bug 1): Pass data.tier directly as tierOverride so we don't
-                depend on a setState flush before the async submit executes. */}
+            {/* Pass data.tier explicitly — never depends on selectedTier state. */}
             <Button
-              onClick={() => void handleSubmit(data.tier)}
-              loading={submitting}
+              onClick={() => void handleUpdateSubmit(data.tier)}
+              loading={updateSubmitting}
               size="lg"
             >
               Update documents
@@ -608,6 +630,7 @@ export default function KycPage() {
         </Card>
       )}
 
+      {/* ── Submitted documents (pending review) ── */}
       {hasPendingReview && verification && (
         <Card>
           <CardHeader>
