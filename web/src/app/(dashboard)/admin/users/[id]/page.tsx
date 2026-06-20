@@ -11,7 +11,8 @@ import { uploadUrl } from "@/lib/utils";
 
 export default function AdminUserDetailPage() {
   const params = useParams();
-  const id = (params as any)?.id;
+  const rawId = (params as Record<string, unknown>)?.id;
+  const id = typeof rawId === "string" ? rawId : null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,11 @@ export default function AdminUserDetailPage() {
   const [transfers, setTransfers] = useState<any[]>([]);
 
   const load = useCallback(async () => {
-    if (!id) return;
+    if (!id) {
+      setError("Invalid user id.");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
