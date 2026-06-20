@@ -133,15 +133,15 @@ export default function AdminTransactionsPage() {
                     onClick={() => openDrawer(t)}
                     className="cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/30"
                   >
-                    <td className="px-5 py-4 font-mono text-xs font-medium">{t.reference}</td>
+                    <td className="px-5 py-4 font-mono text-xs font-medium text-slate-500">{t.reference}</td>
                     <td className="px-5 py-4">
                       <p className="font-medium text-slate-800 dark:text-slate-200">{t.sender.name}</p>
                       <p className="text-xs text-slate-400">{t.sender.email}</p>
                     </td>
-                    <td className="px-5 py-4">{t.beneficiary.fullName}</td>
-                    <td className="px-5 py-4 whitespace-nowrap">{formatAsset(t.sendAmount, t.asset)}</td>
-                    <td className="px-5 py-4">{t.asset}</td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 text-slate-500">{t.beneficiary.fullName}</td>
+                    <td className="px-5 py-4 whitespace-nowrap text-slate-500">{formatAsset(t.sendAmount, t.asset)}</td>
+                    <td className="px-5 py-4 text-slate-500 ">{t.asset}</td>
+                    <td className="px-5 py-4 whitespace-nowrap text-slate-500">
                       <TransferStatusBadge status={t.status} />
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap text-slate-400">
