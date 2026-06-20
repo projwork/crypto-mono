@@ -150,6 +150,68 @@ export const adminSchemas = {
       payoutService: { type: "boolean", example: true },
     },
   },
+  AdminUserSummary: {
+    allOf: [
+      { $ref: "#/components/schemas/PublicUser" },
+      {
+        type: "object",
+        properties: {
+          beneficiariesCount: { type: "integer", example: 2 },
+          transfersCount: { type: "integer", example: 5 },
+          connectedWalletsCount: { type: "integer", example: 1 },
+          kycSubmissionsCount: { type: "integer", example: 1 },
+        },
+      },
+    ],
+  },
+  AdminUsersListResponse: {
+    type: "object",
+    properties: {
+      success: { type: "boolean", enum: [true] },
+      data: {
+        type: "object",
+        properties: {
+          users: {
+            type: "array",
+            items: { $ref: "#/components/schemas/AdminUserSummary" },
+          },
+        },
+      },
+    },
+  },
+  AdminConnectedWallet: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      address: { type: "string", example: "0x742d35Cc6634C0532925a3b844Bc9e7595f2bEb" },
+      chain: { $ref: "#/components/schemas/ChainType" },
+      active: { type: "boolean", example: true },
+    },
+  },
+  AdminUserDetailResponse: {
+    type: "object",
+    properties: {
+      success: { type: "boolean", enum: [true] },
+      data: {
+        type: "object",
+        properties: {
+          user: { $ref: "#/components/schemas/PublicUser" },
+          wallets: {
+            type: "array",
+            items: { $ref: "#/components/schemas/AdminConnectedWallet" },
+          },
+          beneficiaries: {
+            type: "array",
+            items: { $ref: "#/components/schemas/PublicBeneficiary" },
+          },
+          transfers: {
+            type: "array",
+            items: { $ref: "#/components/schemas/PublicTransfer" },
+          },
+        },
+      },
+    },
+  },
 } as const;
 
 const adminSecurity = [{ bearerAuth: [] }];
@@ -339,11 +401,55 @@ export const adminPaths = {
       },
     },
   },
+  "/api/admin/users": {
+    get: {
+      tags: ["Admin"],
+      summary: "List registered users",
+      description:
+        "Returns all users on the system with profile info and activity counts. " +
+        "Filter by role or search by email, name, or phone.",
+      security: adminSecurity,
+      parameters: [
+        {
+          name: "role",
+          in: "query",
+          required: false,
+          schema: { $ref: "#/components/schemas/Role" },
+          description: "Filter by SENDER or ADMIN",
+        },
+        {
+          name: "search",
+          in: "query",
+          required: false,
+          schema: { type: "string" },
+          description: "Search email, first name, last name, or phone",
+        },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "User list",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AdminUsersListResponse" },
+            },
+          },
+        },
+        ...adminResponses,
+      },
+    },
+  },
   "/api/admin/users/{id}": {
     get: {
       tags: ["Admin"],
       summary: "Get user detail",
-      description: "Returns user profile, connected wallets, beneficiaries, and transfers.",
+      description:
+        "Returns full user profile plus connected wallets, beneficiaries, and transfer history.",
       security: adminSecurity,
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
@@ -353,27 +459,7 @@ export const adminPaths = {
           description: "User detail",
           content: {
             "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  success: { type: "boolean", enum: [true] },
-                  data: {
-                    type: "object",
-                    properties: {
-                      user: { $ref: "#/components/schemas/PublicUser" },
-                      wallets: { type: "array", items: { type: "object" } },
-                      beneficiaries: {
-                        type: "array",
-                        items: { $ref: "#/components/schemas/PublicBeneficiary" },
-                      },
-                      transfers: {
-                        type: "array",
-                        items: { $ref: "#/components/schemas/PublicTransfer" },
-                      },
-                    },
-                  },
-                },
-              },
+              schema: { $ref: "#/components/schemas/AdminUserDetailResponse" },
             },
           },
         },

@@ -9,6 +9,7 @@ import { getAdminStats } from "./admin.stats.service.js";
 import {
   adminOverrideTransferSchema,
   adminTransferListSchema,
+  adminUserListSchema,
   liquidityTopupSchema,
   sweepCryptoSchema,
   broadcastNotificationSchema,
@@ -20,6 +21,7 @@ import {
 } from "./admin.transfers.service.js";
 import {
   getAdminUser,
+  listAdminUsers,
   getHotWalletBalance,
   getBlockchainTransactions,
   sweepCrypto,
@@ -112,7 +114,17 @@ adminRouter.get(
   }),
 );
 
-// New admin endpoints
+// --- User management -------------------------------------------------------
+
+adminRouter.get(
+  "/users",
+  asyncHandler(async (req, res) => {
+    const filters = adminUserListSchema.parse(req.query);
+    const users = await listAdminUsers(filters);
+    sendOk(res, { users });
+  }),
+);
+
 adminRouter.get(
   "/users/:id",
   asyncHandler(async (req, res) => {
@@ -224,6 +236,14 @@ adminRouter.get(
 adminRouter.get("/", (_req, res) => {
   sendOk(res, {
     module: "admin",
-    endpoints: ["GET /stats", "GET /transfers", "POST /transfers/:id/override", "POST /fx-rate", "GET /audit"],
+    endpoints: [
+      "GET /stats",
+      "GET /users",
+      "GET /users/:id",
+      "GET /transfers",
+      "POST /transfers/:id/override",
+      "POST /fx-rate",
+      "GET /audit",
+    ],
   });
 });

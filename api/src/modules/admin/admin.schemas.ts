@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { AssetType, TransferStatus } from "@prisma/client";
+import { AssetType, Role, TransferStatus } from "@prisma/client";
+
+export const adminUserListSchema = z.object({
+  role: z.nativeEnum(Role).optional(),
+  search: z.string().trim().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+});
 
 export const adminTransferListSchema = z.object({
   status: z.nativeEnum(TransferStatus).optional(),
@@ -29,6 +35,7 @@ export const broadcastNotificationSchema = z.object({
 });
 
 export type AdminTransferListQuery = z.infer<typeof adminTransferListSchema>;
+export type AdminUserListQuery = z.infer<typeof adminUserListSchema>;
 export type AdminOverrideTransferInput = z.infer<
   typeof adminOverrideTransferSchema
 >;
