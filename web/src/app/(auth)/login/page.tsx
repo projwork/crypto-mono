@@ -74,12 +74,13 @@ export default function LoginPage() {
           />
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-               <label className="text-xs font-bold text-slate-700">Password</label>
+               <label htmlFor="password" className="text-xs font-bold text-slate-700">Password</label>
                <button type="button" className="text-[10px] font-bold text-indigo-600 hover:text-indigo-500 uppercase tracking-tight">
                  Forgot Password?
                </button>
             </div>
             <Input
+              id="password"
               type="password"
               placeholder="••••••••"
               value={password}
