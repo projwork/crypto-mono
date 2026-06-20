@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -30,7 +29,7 @@ function initialSelectedTier(status: KycStatusResponse): KycTier {
   if (status.status === "APPROVED" && status.tier !== "TIER_3") {
     return status.tier === "TIER_1" ? "TIER_2" : "TIER_3";
   }
-  return status.verification?.tier ?? status.tier ?? "TIER_2";
+  return status.verification?.tier ?? status.latestApplication?.tier ?? "TIER_2";
 }
 
 const TIER_ORDER: Record<KycTier, number> = { TIER_1: 1, TIER_2: 2, TIER_3: 3 };
@@ -79,6 +78,12 @@ function TierCard({
   );
 }
 
+function hasExistingIdentityDocs(verification: KycStatusResponse["verification"]): boolean {
+  if (!verification) return false;
+  const hasId = Boolean(verification.passportUrl || verification.nationalIdUrl);
+  return hasId && Boolean(verification.selfieUrl);
+}
+
 // Reusable document fields used in multiple form sections.
 function DocumentFields({
   tier,
@@ -95,6 +100,7 @@ function DocumentFields({
   existingPassportUrl,
   existingNationalIdUrl,
   existingSelfieUrl,
+  reuseExistingIdentity = false,
 }: {
   tier: KycTier;
   passport: File | null;
@@ -110,30 +116,41 @@ function DocumentFields({
   existingPassportUrl?: string | null;
   existingNationalIdUrl?: string | null;
   existingSelfieUrl?: string | null;
+  /** When true, hide ID uploads — existing verified documents will be reused. */
+  reuseExistingIdentity?: boolean;
 }) {
   return (
     <>
-      <FileInput
-        label="Passport"
-        hint="Upload your passport photo page"
-        value={passport}
-        onChange={onPassport}
-        existingUrl={uploadUrl(existingPassportUrl) ?? undefined}
-      />
-      <FileInput
-        label="National ID"
-        hint="Or upload a national ID card"
-        value={nationalId}
-        onChange={onNationalId}
-        existingUrl={uploadUrl(existingNationalIdUrl) ?? undefined}
-      />
-      <FileInput
-        label="Selfie"
-        hint="A clear photo of your face holding your ID"
-        value={selfie}
-        onChange={onSelfie}
-        existingUrl={uploadUrl(existingSelfieUrl) ?? undefined}
-      />
+      {reuseExistingIdentity ? (
+        <Alert tone="info">
+          Your verified identity documents on file will be reused for this tier upgrade.
+          Provide the Tier 3 details below.
+        </Alert>
+      ) : (
+        <>
+          <FileInput
+            label="Passport"
+            hint="Upload your passport photo page"
+            value={passport}
+            onChange={onPassport}
+            existingUrl={uploadUrl(existingPassportUrl) ?? undefined}
+          />
+          <FileInput
+            label="National ID"
+            hint="Or upload a national ID card"
+            value={nationalId}
+            onChange={onNationalId}
+            existingUrl={uploadUrl(existingNationalIdUrl) ?? undefined}
+          />
+          <FileInput
+            label="Selfie"
+            hint="A clear photo of your face holding your ID"
+            value={selfie}
+            onChange={onSelfie}
+            existingUrl={uploadUrl(existingSelfieUrl) ?? undefined}
+          />
+        </>
+      )}
 
       {tier === "TIER_3" && (
         <>
@@ -168,8 +185,6 @@ function DocumentFields({
 
 export default function KycPage() {
   const { refresh } = useAuth();
-  const router = useRouter();
-  const hasRedirectedRef = useRef(false);
 
   const [data, setData] = useState<KycStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,7 +237,9 @@ export default function KycPage() {
   }, [load]);
 
   useEffect(() => {
-    if (data?.status === "PENDING" && !hasRedirectedRef.current) {
+    const shouldPoll =
+      data?.status === "PENDING" || data?.latestApplication?.status === "PENDING";
+    if (shouldPoll) {
       const intervalId = window.setInterval(async () => {
         try {
           const status = await kycApi.getStatus();
@@ -234,22 +251,7 @@ export default function KycPage() {
       return () => window.clearInterval(intervalId);
     }
     return undefined;
-  }, [data]);
-
-  useEffect(() => {
-    if (!loading && data?.status === "APPROVED" && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
-      (async () => {
-        try {
-          await refresh();
-        } catch {
-          // ignore
-        } finally {
-          router.replace("/dashboard");
-        }
-      })();
-    }
-  }, [data, loading, router, refresh]);
+  }, [data?.status, data?.latestApplication?.status]);
 
   // Shared validation + submit logic. tierOverride is always passed explicitly
   // so we never depend on React state that may not have flushed yet.
@@ -264,7 +266,12 @@ export default function KycPage() {
     setErr(null);
     setOk(false);
 
-    if (tier !== "TIER_1") {
+    const isApprovedTierUpgrade =
+      data?.status === "APPROVED" &&
+      data.verification != null &&
+      TIER_ORDER[tier] > TIER_ORDER[data.tier];
+
+    if (tier !== "TIER_1" && !isApprovedTierUpgrade) {
       const hasIdDoc =
         files.passport ||
         files.nationalId ||
@@ -300,13 +307,19 @@ export default function KycPage() {
       };
 
       if (!payload.passport && data?.verification?.passportUrl) {
-        payload.passportUrl = uploadUrl(data.verification.passportUrl) ?? undefined;
+        payload.passportUrl = data.verification.passportUrl.startsWith("http")
+          ? data.verification.passportUrl
+          : (uploadUrl(data.verification.passportUrl) ?? undefined);
       }
       if (!payload.nationalId && data?.verification?.nationalIdUrl) {
-        payload.nationalIdUrl = uploadUrl(data.verification.nationalIdUrl) ?? undefined;
+        payload.nationalIdUrl = data.verification.nationalIdUrl.startsWith("http")
+          ? data.verification.nationalIdUrl
+          : (uploadUrl(data.verification.nationalIdUrl) ?? undefined);
       }
       if (!payload.selfie && data?.verification?.selfieUrl) {
-        payload.selfieUrl = uploadUrl(data.verification.selfieUrl) ?? undefined;
+        payload.selfieUrl = data.verification.selfieUrl.startsWith("http")
+          ? data.verification.selfieUrl
+          : (uploadUrl(data.verification.selfieUrl) ?? undefined);
       }
 
       await kycApi.submit(payload);
@@ -360,12 +373,17 @@ export default function KycPage() {
   }
 
   const verification = data.verification;
-  const hasPendingReview = data.status === "PENDING" && verification !== null;
+  const application = data.latestApplication ?? null;
   const isApproved = data.status === "APPROVED";
+  const hasPendingUpgrade = application?.status === "PENDING";
+  const rejectedUpgrade = application?.status === "REJECTED" && isApproved;
+  const hasPendingReview = data.status === "PENDING" && verification !== null;
   const showNewSubmissionForm = !isApproved && !hasPendingReview;
-  const canUpgrade = isApproved && data.tier !== "TIER_3";
+  const canUpgrade = isApproved && data.tier !== "TIER_3" && !hasPendingUpgrade;
   // Show update-documents for ALL approved users regardless of tier.
   const canUpdateDocuments = isApproved;
+  const reuseIdentityForUpgrade =
+    isApproved && selectedTier === "TIER_3" && hasExistingIdentityDocs(verification);
 
   const limitPct =
     data.limit.limitUsd && data.limit.limitUsd > 0
@@ -390,12 +408,24 @@ export default function KycPage() {
               <Badge tone={statusTone(data.status)}>{humanize(data.status)}</Badge>
               <Badge tone="neutral">{tierLabel(data.tier)}</Badge>
             </div>
-            {verification?.rejectionReason && (
+            {rejectedUpgrade && application?.rejectionReason && (
+              <Alert tone="error">
+                <strong>Upgrade to {tierLabel(application.tier)} declined:</strong>{" "}
+                {application.rejectionReason} You remain verified at {tierLabel(data.tier)}.
+              </Alert>
+            )}
+            {!rejectedUpgrade && verification?.rejectionReason && !isApproved && (
               <Alert tone="error">
                 <strong>Rejected:</strong> {verification.rejectionReason}
               </Alert>
             )}
-            {hasPendingReview && (
+            {hasPendingUpgrade && (
+              <Alert tone="info">
+                Your upgrade to {tierLabel(application!.tier)} is under review. You can continue
+                sending at your current {tierLabel(data.tier)} limit.
+              </Alert>
+            )}
+            {hasPendingReview && !hasPendingUpgrade && (
               <Alert tone="info">
                 Your documents are under review. We&apos;ll notify you once approved.
               </Alert>
@@ -569,6 +599,7 @@ export default function KycPage() {
                 existingPassportUrl={verification?.passportUrl}
                 existingNationalIdUrl={verification?.nationalIdUrl}
                 existingSelfieUrl={verification?.selfieUrl}
+                reuseExistingIdentity={reuseIdentityForUpgrade}
               />
               <Button
                 onClick={() => void handleUpgradeSubmit()}

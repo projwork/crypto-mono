@@ -104,6 +104,8 @@ export interface TierInfo {
 
 export interface KycStatusResponse {
   verification: PublicKycVerification | null;
+  /** Pending or rejected tier upgrade / first application when user remains approved at current tier. */
+  latestApplication?: PublicKycVerification | null;
   tier: KycTier;
   status: KycStatus;
   limit: TransferLimit;

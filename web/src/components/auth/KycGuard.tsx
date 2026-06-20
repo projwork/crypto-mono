@@ -6,7 +6,7 @@ import { kycApi } from "@/lib/api/kyc";
 import { needsKycGate, resolveKycRoute } from "@/lib/auth/routing";
 import { useAuth } from "@/lib/auth/AuthContext";
 
-/** Redirects non-verified users away from the main app to the KYC workflow. */
+/** Redirects users who must complete KYC before using the main app. */
 export function KycGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -16,28 +16,37 @@ export function KycGuard({ children }: { children: ReactNode }) {
     if (!user) return;
 
     if (!needsKycGate(user)) {
-      setReady(true);
-      return;
+      if (user.kycStatus !== "PENDING") {
+        setReady(true);
+        return;
+      }
+
+      let cancelled = false;
+
+      void (async () => {
+        try {
+          const status = await kycApi.getStatus();
+          if (cancelled) return;
+
+          const route = resolveKycRoute(user, status.verification);
+          if (route === "/dashboard") {
+            setReady(true);
+            return;
+          }
+          router.replace(route);
+        } catch {
+          if (!cancelled) {
+            setReady(true);
+          }
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
     }
 
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const status = await kycApi.getStatus();
-        if (!cancelled) {
-          router.replace(resolveKycRoute(user, status.verification));
-        }
-      } catch {
-        if (!cancelled) {
-          router.replace(resolveKycRoute(user));
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    router.replace(resolveKycRoute(user));
   }, [user, router]);
 
   if (!ready) {

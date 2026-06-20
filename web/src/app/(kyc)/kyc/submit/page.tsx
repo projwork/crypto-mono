@@ -5,28 +5,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { CameraCapture } from "@/components/kyc/CameraCapture";
 import { DocumentDropzone } from "@/components/kyc/DocumentDropzone";
-import { KycLimitsTable } from "@/components/kyc/KycLimitsTable";
+import { authApi } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { kycApi } from "@/lib/api/kyc";
-import type { KycStatusResponse, KycTier } from "@/lib/api/types";
+import type { PublicUser } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { ONBOARDING_KYC_TIER } from "@/lib/kyc/tier";
 
 type WizardStep = "personal" | "document" | "selfie" | "review";
-
-interface UserProfileData {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  country: string;
-  role: string;
-  kycTier: string;
-  kycStatus: string;
-}
 
 const COUNTRIES = [
   { code: "ET", name: "Ethiopia", flag: "🇪🇹" },
@@ -39,19 +27,15 @@ const COUNTRIES = [
 
 export default function KycSubmitPage() {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { user, refresh, loading: authLoading } = useAuth();
 
-  const [kycData, setKycData] = useState<KycStatusResponse | null>(null);
-  const [userData, setUserData] = useState<UserProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<PublicUser | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const [passport, setPassport] = useState<File | null>(null);
   const [nationalId, setNationalId] = useState<File | null>(null);
   const [driversLicense, setDriversLicense] = useState<File | null>(null);
   const [selfie, setSelfie] = useState<File | null>(null);
-  const [proofOfAddressUrl, setProofOfAddressUrl] = useState("");
-  const [sourceOfFunds, setSourceOfFunds] = useState("");
-  const [selectedTier, setSelectedTier] = useState<KycTier>("TIER_2");
   
   const [selectedDocType, setSelectedDocType] = useState<"citizenship_id" | "license" | "passport">("citizenship_id");
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[2]); 
@@ -64,22 +48,22 @@ export default function KycSubmitPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loadInitialState = useCallback(async () => {
-    setLoading(true);
+    setPageLoading(true);
     try {
-      const profileRes = await fetch("/api/auth/me");
-      if (profileRes.ok) {
-        const profileJson = await profileRes.json();
-        if (profileJson.success && profileJson.data?.user) {
-          setUserData(profileJson.data.user);
-          const matchedCountry = COUNTRIES.find(c => c.name.toLowerCase() === profileJson.data.user.country?.toLowerCase());
-          if (matchedCountry) setSelectedCountry(matchedCountry);
-        }
-      }
+      const profile = user ?? (await authApi.me());
+      setUserData(profile);
+      const matchedCountry = COUNTRIES.find(
+        (c) => c.name.toLowerCase() === profile.country?.toLowerCase(),
+      );
+      if (matchedCountry) setSelectedCountry(matchedCountry);
 
       const status = await kycApi.getStatus();
-      setKycData(status);
-      setSelectedTier(status.verification?.tier ?? status.tier ?? "TIER_2");
-      
+
+      if (status.status === "APPROVED" || profile.kycStatus === "APPROVED") {
+        router.replace("/kyc");
+        return;
+      }
+
       if (status.verification?.status === "PENDING") {
         router.replace("/kyc/status");
       }
@@ -90,13 +74,14 @@ export default function KycSubmitPage() {
       }
       setError(err instanceof ApiError ? err.message : "Failed to load workflow state mappings.");
     } finally {
-      setLoading(false);
+      setPageLoading(false);
     }
-  }, [router]);
+  }, [router, user]);
 
   useEffect(() => {
+    if (authLoading) return;
     void loadInitialState();
-  }, [loadInitialState]);
+  }, [loadInitialState, authLoading]);
 
   const validateStep = (): boolean => {
     const errors: Record<string, string> = {};
@@ -133,12 +118,10 @@ export default function KycSubmitPage() {
     try {
       const idFile = nationalId ?? driversLicense ?? passport ?? undefined;
       await kycApi.submit({
-        tier: selectedTier,
-        passport: selectedDocType === "passport" ? passport ?? undefined : undefined,
-        nationalId: selectedDocType === "citizenship_id" ? idFile : undefined,
+        tier: ONBOARDING_KYC_TIER,
+        passport: selectedDocType === "passport" ? idFile : undefined,
+        nationalId: selectedDocType !== "passport" ? idFile : undefined,
         selfie: selfie ?? undefined,
-        proofOfAddressUrl: proofOfAddressUrl.trim() || undefined,
-        sourceOfFunds: sourceOfFunds.trim() || undefined,
       });
       await refresh();
       router.replace("/kyc/status");
@@ -157,7 +140,7 @@ export default function KycSubmitPage() {
     }
   };
 
-  if (loading) {
+  if (pageLoading || authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#030922] flex-col gap-4">
         <span className="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -444,14 +427,16 @@ export default function KycSubmitPage() {
               <div className="space-y-6 animate-fadeIn">
                 <div>
                   <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Step 4/4</span>
-                  <h2 className="text-xl font-bold mt-1 text-white">Review & Complete Profile Submission</h2>
-                  <p className="text-xs text-slate-400 mt-1">Please perform final validations on structural details before updating compliance metrics ledger configurations.</p>
+                  <h2 className="text-xl font-bold mt-1 text-white">Review & Submit</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Confirm your details below. Tier 3 upgrades (proof of address) are available from Verification after approval.
+                  </p>
                 </div>
 
                 <div className="bg-[#030922] border border-slate-800/80 rounded-xl p-5 space-y-4 text-sm">
                   <div className="flex justify-between border-b border-slate-900/60 pb-2">
-                    <span className="text-slate-400">Target Level Tier</span>
-                    <span className="font-semibold text-emerald-400">{selectedTier}</span>
+                    <span className="text-slate-400">Verification tier</span>
+                    <span className="font-semibold text-emerald-400">Tier 2 — ID & selfie</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-900/60 pb-2">
                     <span className="text-slate-400">Verification Document Type</span>
@@ -465,26 +450,6 @@ export default function KycSubmitPage() {
                     <span className="text-slate-400">Selfie Snapshot Identity File</span>
                     <span className={`font-semibold ${selfie ? "text-emerald-400" : "text-red-400"}`}>{selfie ? "Attached Ready" : "Missing"}</span>
                   </div>
-                </div>
-
-                <Input
-                  label="Proof of Address Reference Asset Location"
-                  placeholder="Insert secure tracking destination URL context path parameters…"
-                  value={proofOfAddressUrl}
-                  onChange={(e) => setProofOfAddressUrl(e.target.value)}
-                  className="bg-[#030922] border-slate-800 text-white h-11 focus:border-blue-500"
-                />
-
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="sourceOfFunds" className="text-xs font-medium text-slate-400">Origin / Description of Declared Funds</label>
-                  <textarea
-                    id="sourceOfFunds"
-                    rows={3}
-                    placeholder="Provide details mapping data tracking asset origin registries..."
-                    value={sourceOfFunds}
-                    onChange={(e) => setSourceOfFunds(e.target.value)}
-                    className="w-full rounded-xl border border-slate-800 bg-[#030922] px-3.5 py-2.5 text-sm text-slate-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
                 </div>
               </div>
             )}
