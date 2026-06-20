@@ -109,7 +109,7 @@ export const adminApi = {
     const params = new URLSearchParams();
     if (filters.role) params.set("role", filters.role);
     if (filters.search) params.set("search", filters.search);
-    if (filters.limit) params.set("limit", String(filters.limit));
+    if (filters.limit !== undefined) params.set("limit", String(filters.limit));
     const qs = params.toString();
     const { users } = await api.get<{ users: any[] }>(`/api/admin/users${qs ? `?${qs}` : ""}`);
     return users;
