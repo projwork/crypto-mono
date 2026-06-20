@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 
 export function Header() {
   return (
@@ -25,10 +24,11 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Link href="/login">
-            <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800 rounded-lg px-5 h-9 text-xs">
-              Connect Wallet
-            </Button>
+          <Link href="/login" className="text-xs font-bold text-indigo-600 hover:text-indigo-500 uppercase tracking-tight">
+            Sign In
+          </Link>
+          <Link href="/register" className="ml-4 px-4 py-2 bg-slate-950 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-slate-800 transition-colors">
+            Get Started
           </Link>
         </div>
       </div>

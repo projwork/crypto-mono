@@ -63,45 +63,45 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-          Create account
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          Create Account
         </h2>
         <p className="mt-3 text-slate-500 font-medium">
           Join LagerPay to start sending USDC today.
         </p>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
+      <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert tone="error">{error}</Alert>}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <Input
-              label="First name"
+              label="First Name"
               placeholder="Abebe"
               value={formData.firstName}
               onChange={(e) =>
                 setFormData({ ...formData, firstName: e.target.value })
               }
               required
-              className="rounded-xl h-11"
+              className="rounded-lg h-10 text-sm"
             />
             <Input
-              label="Last name"
+              label="Last Name"
               placeholder="Bekele"
               value={formData.lastName}
               onChange={(e) =>
                 setFormData({ ...formData, lastName: e.target.value })
               }
               required
-              className="rounded-xl h-11"
+              className="rounded-lg h-10 text-sm"
             />
           </div>
 
           <Input
-            label="Email address"
+            label="Email Address"
             type="email"
             placeholder="you@example.com"
             value={formData.email}
@@ -109,19 +109,19 @@ export default function RegisterPage() {
               setFormData({ ...formData, email: e.target.value })
             }
             required
-            className="rounded-xl h-11"
+            className="rounded-lg h-10 text-sm"
           />
 
           <Input
-            label="Phone number"
+            label="Phone Number"
             type="tel"
-            placeholder="+41 79 123 45 67"
+            placeholder="+41 79 000 00 00"
             value={formData.phone}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
             }
             required
-            className="rounded-xl h-11"
+            className="rounded-lg h-10 text-sm"
           />
 
           <PasswordInput

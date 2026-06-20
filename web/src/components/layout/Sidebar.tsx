@@ -1,27 +1,29 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth/AuthContext";
-import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "./nav";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { cn } from '@/lib/utils';
+import { NAV_ITEMS } from './nav';
 
 function Logo() {
   return (
     <Link href="/dashboard" className="flex items-center gap-2.5 px-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-teal-600 text-white shadow-sm">
-        <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm">
+        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
           <path
             d="M12 2v20M7 6l5-4 5 4M7 18l5 4 5-4"
             stroke="currentColor"
-            strokeWidth={1.8}
+            strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>
       </span>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">LagerPay</p>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          LagerPay
+        </p>
         <p className="text-[11px] text-slate-400">Crypto → ETB</p>
       </div>
     </Link>
@@ -43,20 +45,25 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         {items.map((item) => {
           const active =
             pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
                 active
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100',
               )}
             >
-              <span className={cn(active ? "text-indigo-600 dark:text-indigo-400" : "")}>
+              <span
+                className={cn(
+                  'h-4 w-4',
+                  active ? 'text-indigo-600 dark:text-indigo-400' : '',
+                )}
+              >
                 {item.icon}
               </span>
               {item.label}
@@ -64,9 +71,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-        <p className="font-medium text-slate-700 dark:text-slate-200">Need help?</p>
-        <p className="mt-1">Funds are secured and fully reconciled on every transfer.</p>
+
+      {/* Updated Help Box with PDF messaging */}
+      <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
+        <p className="text-[11px] font-bold text-slate-900 uppercase tracking-wider dark:text-slate-200">
+          Security Notice
+        </p>
+        <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+          Funds are protected through advanced multi-signature custody and
+          real-time settlement.
+        </p>
       </div>
     </div>
   );

@@ -47,29 +47,32 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-          Welcome back
+    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          Welcome Back
         </h2>
         <p className="mt-3 text-slate-500 font-medium">
           Securely access your LagerPay account.
         </p>
       </div>
 
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {error && <Alert tone="error">{error}</Alert>}
+      <div className="bg-white p-7 rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/40">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="text-xs py-2">
+              <Alert tone="error">{error}</Alert>
+            </div>
+          )}
 
           <Input
-            label="Email address"
+            label="Email Address"
             type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
+            placeholder="name@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="rounded-xl h-12"
+            className="rounded-lg h-10 text-sm"
           />
 
           <PasswordInput
@@ -123,7 +126,7 @@ export default function LoginPage() {
           href="/register"
           className="font-bold text-indigo-600 hover:text-indigo-500"
         >
-          Create an account
+          Create account
         </Link>
       </p>
     </div>
