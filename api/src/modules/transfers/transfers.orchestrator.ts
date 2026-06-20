@@ -1,9 +1,10 @@
 import {
   BankName,
+  Beneficiary,
   PayoutMethod,
   Role,
+  Transfer,
   TransferStatus,
-  type Beneficiary,
 } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
@@ -44,30 +45,17 @@ const getTransferForOrchestration = async (userId: string, transferId: string) =
   return transfer;
 };
 
-/**
- * Demo orchestration: simulates crypto deposit through payout completion (PRD §6, §7).
- */
-export const simulateDeposit = async (userId: string, transferId: string) => {
-  const transfer = await getTransferForOrchestration(userId, transferId);
+type OrchestrationTransfer = Transfer & { beneficiary: Beneficiary };
 
-  if (transfer.status !== TransferStatus.AWAITING_CRYPTO) {
-    throw AppError.badRequest(
-      `Transfer must be in AWAITING_CRYPTO to simulate deposit (current: ${transfer.status})`,
-    );
-  }
-
+const runPostBlockchainPipeline = async (
+  userId: string,
+  transfer: OrchestrationTransfer,
+): Promise<ReturnType<typeof getTransferById>> => {
+  const transferId = transfer.id;
   const payoutEtb = Number(transfer.payoutEtb);
   let etbReserved = false;
 
   try {
-    await transition(transferId, TransferStatus.BLOCKCHAIN_PENDING, { actorId: userId });
-
-    const txHash = generateTxHash();
-    await transition(transferId, TransferStatus.BLOCKCHAIN_CONFIRMED, {
-      actorId: userId,
-      txHash,
-    });
-
     const swiss = await creditSwissDeposit({
       referenceId: transfer.reference,
       asset: transfer.asset,
@@ -141,6 +129,63 @@ export const simulateDeposit = async (userId: string, transferId: string) => {
       await releaseEtb(payoutEtb, transfer.reference).catch(() => undefined);
     }
 
+    const message =
+      error instanceof Error ? error.message : "Transfer orchestration failed";
+
+    if (
+      (await prisma.transfer.findUnique({ where: { id: transferId } }))?.status !==
+      TransferStatus.FAILED
+    ) {
+      await transition(transferId, TransferStatus.FAILED, {
+        actorId: userId,
+        failureReason: message,
+      }).catch(() => undefined);
+    }
+
+    throw error instanceof AppError
+      ? error
+      : AppError.badRequest(message);
+  }
+};
+
+/**
+ * Continue ETB payout after a real or mock crypto deposit has reached BLOCKCHAIN_CONFIRMED.
+ */
+export const continueTransferPayout = async (userId: string, transferId: string) => {
+  const transfer = await getTransferForOrchestration(userId, transferId);
+
+  if (transfer.status !== TransferStatus.BLOCKCHAIN_CONFIRMED) {
+    throw AppError.badRequest(
+      `Transfer must be BLOCKCHAIN_CONFIRMED to continue payout (current: ${transfer.status})`,
+    );
+  }
+
+  return runPostBlockchainPipeline(userId, transfer);
+};
+
+/**
+ * Demo orchestration: simulates crypto deposit through payout completion (PRD §6, §7).
+ */
+export const simulateDeposit = async (userId: string, transferId: string) => {
+  const transfer = await getTransferForOrchestration(userId, transferId);
+
+  if (transfer.status !== TransferStatus.AWAITING_CRYPTO) {
+    throw AppError.badRequest(
+      `Transfer must be in AWAITING_CRYPTO to simulate deposit (current: ${transfer.status})`,
+    );
+  }
+
+  try {
+    await transition(transferId, TransferStatus.BLOCKCHAIN_PENDING, { actorId: userId });
+
+    const txHash = generateTxHash();
+    await transition(transferId, TransferStatus.BLOCKCHAIN_CONFIRMED, {
+      actorId: userId,
+      txHash,
+    });
+
+    return runPostBlockchainPipeline(userId, transfer);
+  } catch (error) {
     const message =
       error instanceof Error ? error.message : "Transfer orchestration failed";
 

@@ -21,7 +21,8 @@ import {
   getReceipt,
   getPayout,
 } from "./transfers.service.js";
-import { simulateDeposit } from "./transfers.orchestrator.js";
+import { simulateDeposit, continueTransferPayout } from "./transfers.orchestrator.js";
+import { generateReceiptPdf } from "./transfers.receipt.pdf.js";
 import {
   transferStatusBus,
   type TransferStatusEvent,
@@ -127,6 +128,27 @@ transfersRouter.post(
   asyncHandler(async (req, res) => {
     const transfer = await simulateDeposit(req.user!.id, req.params.id);
     sendOk(res, { transfer });
+  }),
+);
+
+transfersRouter.post(
+  "/:id/continue-payout",
+  asyncHandler(async (req, res) => {
+    const transfer = await continueTransferPayout(req.user!.id, req.params.id);
+    sendOk(res, { transfer });
+  }),
+);
+
+transfersRouter.get(
+  "/:id/receipt.pdf",
+  asyncHandler(async (req, res) => {
+    const pdf = await generateReceiptPdf(req.user!.id, req.params.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="receipt-${req.params.id}.pdf"`,
+    );
+    res.send(pdf);
   }),
 );
 

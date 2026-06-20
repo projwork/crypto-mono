@@ -79,7 +79,12 @@ export const getFiatRateSnapshot = async (): Promise<FiatRateSnapshot> => {
   const usdToEtb = json.rates?.ETB;
 
   if (json.result !== "success" || !usdToChf || !usdToEtb || usdToChf <= 0 || usdToEtb <= 0) {
-    throw AppError.badRequest("Fiat provider did not return CHF and ETB rates");
+    const fallback = await getLocalFallbackSnapshot();
+    cachedSnapshot = {
+      ...fallback,
+      expiresAt: now + config.conversions.rateCacheTtlMs,
+    };
+    return fallback;
   }
 
   const snapshot = {
