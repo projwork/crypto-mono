@@ -7,6 +7,7 @@ import { sendOk } from "./lib/apiResponse.js";
 import { apiRouter } from "./routes/index.js";
 import { notFound } from "./middleware/notFound.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { mountApiDocs } from "./swagger/index.js";
 
 /** Builds and configures the Express application (without starting it). */
 export const createApp = (): Express => {
@@ -35,6 +36,8 @@ export const createApp = (): Express => {
       timestamp: new Date().toISOString(),
     });
   });
+
+  mountApiDocs(app);
 
   app.use("/api", apiRouter);
 

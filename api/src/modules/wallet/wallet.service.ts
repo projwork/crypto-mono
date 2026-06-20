@@ -1,7 +1,15 @@
 import crypto from "node:crypto";
-import { AssetType, type Transfer, type Wallet } from "@prisma/client";
+import {
+  AssetType,
+  TransferStatus,
+  type Transfer,
+  type Wallet,
+  type ConnectedWallet,
+} from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import type { ConnectWalletInput, SendFromWalletInput } from "./wallet.schemas.js";
+import { confirmBlockchainDeposit } from "../mock/mock.blockchain.service.js";
 
 /** Public deposit address shape — documented in CONTRACTS.md. */
 export const toDepositAddress = (wallet: Wallet) => ({
@@ -14,6 +22,17 @@ export const toDepositAddress = (wallet: Wallet) => ({
 
 export type DepositAddress = ReturnType<typeof toDepositAddress>;
 
+/** Public connected wallet shape */
+export const toConnectedWallet = (wallet: ConnectedWallet) => ({
+  id: wallet.id,
+  address: wallet.address,
+  chain: wallet.chain,
+  active: wallet.active,
+  createdAt: wallet.createdAt,
+});
+
+export type PublicConnectedWallet = ReturnType<typeof toConnectedWallet>;
+
 /** Deposit instructions for a transfer — documented in CONTRACTS.md. */
 export interface DepositInstructions {
   transferId: string;
@@ -24,7 +43,10 @@ export interface DepositInstructions {
   network: string;
 }
 
-const getOwnedTransfer = async (userId: string, transferId: string): Promise<Transfer> => {
+const getOwnedTransfer = async (
+  userId: string,
+  transferId: string,
+): Promise<Transfer> => {
   const transfer = await prisma.transfer.findFirst({
     where: { id: transferId, senderId: userId },
   });
@@ -93,7 +115,10 @@ export const getDepositInstructions = async (
   transferId: string,
 ): Promise<DepositInstructions> => {
   const transfer = await getOwnedTransfer(userId, transferId);
-  const { depositAddress } = await getOrCreateDepositAddress(userId, transferId);
+  const { depositAddress } = await getOrCreateDepositAddress(
+    userId,
+    transferId,
+  );
 
   return {
     transferId: transfer.id,
@@ -103,4 +128,145 @@ export const getDepositInstructions = async (
     expectedAmount: transfer.sendAmount.toString(),
     network: "Ethereum",
   };
+};
+
+// --- Connected Wallet Functions ---
+
+export const connectWallet = async (
+  userId: string,
+  input: ConnectWalletInput,
+) => {
+  // Normalize address to lowercase for consistency
+  const normalizedAddress = input.address.toLowerCase();
+
+  // Check if wallet already exists for user
+  const existingWallet = await prisma.connectedWallet.findFirst({
+    where: {
+      userId,
+      address: normalizedAddress,
+      chain: input.chain,
+    },
+  });
+
+  if (existingWallet) {
+    // If exists, reactivate it and update signature
+    const updatedWallet = await prisma.connectedWallet.update({
+      where: { id: existingWallet.id },
+      data: {
+        active: true,
+        signature: input.signature,
+      },
+    });
+    return toConnectedWallet(updatedWallet);
+  }
+
+  // Create new connected wallet
+  const newWallet = await prisma.connectedWallet.create({
+    data: {
+      userId,
+      address: normalizedAddress,
+      chain: input.chain,
+      signature: input.signature,
+      active: true,
+    },
+  });
+
+  return toConnectedWallet(newWallet);
+};
+
+export const getMyWallets = async (userId: string) => {
+  const wallets = await prisma.connectedWallet.findMany({
+    where: { userId, active: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return wallets.map(toConnectedWallet);
+};
+
+/** @deprecated Use getMyWallets — kept for internal callers expecting a single wallet. */
+export const getMyWallet = async (userId: string) => {
+  const wallets = await getMyWallets(userId);
+  return wallets[0] ?? null;
+};
+
+export const sendFromConnectedWallet = async (
+  userId: string,
+  input: SendFromWalletInput,
+) => {
+  const normalizedFrom = input.fromAddress.toLowerCase();
+
+  const connectedWallet = await prisma.connectedWallet.findFirst({
+    where: {
+      userId,
+      address: normalizedFrom,
+      active: true,
+    },
+  });
+
+  if (!connectedWallet) {
+    throw AppError.badRequest(
+      "Connected wallet not found or inactive. Connect MetaMask via POST /api/wallet/connect first.",
+    );
+  }
+
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: input.transferId, senderId: userId },
+    include: { wallet: true },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  if (transfer.status !== TransferStatus.AWAITING_CRYPTO) {
+    throw AppError.badRequest(
+      `Transfer must be AWAITING_CRYPTO to send (current: ${transfer.status})`,
+    );
+  }
+
+  const { depositAddress } = await getOrCreateDepositAddress(userId, input.transferId);
+
+  const send = {
+    transferId: transfer.id,
+    reference: transfer.reference,
+    fromAddress: connectedWallet.address,
+    toAddress: depositAddress.address,
+    amount: transfer.sendAmount.toString(),
+    asset: depositAddress.asset,
+    chain: connectedWallet.chain,
+    network: "Ethereum",
+  };
+
+  if (!input.txHash) {
+    return {
+      status: "READY_TO_SEND" as const,
+      send,
+    };
+  }
+
+  const confirmation = await confirmBlockchainDeposit({
+    transferId: transfer.id,
+    txHash: input.txHash,
+  });
+
+  return {
+    status: "SENT" as const,
+    send,
+    confirmation,
+  };
+};
+
+export const disconnectWallet = async (userId: string) => {
+  // Deactivate all user's active connected wallets
+  await prisma.connectedWallet.updateMany({
+    where: {
+      userId,
+      active: true,
+    },
+    data: {
+      active: false,
+    },
+  });
+
+  return { disconnected: true };
 };

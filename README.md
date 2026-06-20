@@ -1,4 +1,4 @@
-# NileRemit — Crypto-to-ETB Remittance (Prototype)
+# NileRemit/DiasporaPay — Crypto-to-ETB Remittance (Prototype)
 
 A full-stack prototype for sending crypto from the diaspora and delivering Ethiopian Birr (ETB) to bank accounts and Telebirr. Built as a monorepo with a **Next.js** frontend and **Express + Prisma** backend.
 

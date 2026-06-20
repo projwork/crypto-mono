@@ -1,0 +1,55 @@
+# CI gate and Deploy for the crypto-remittance monorepo.
+#
+# This workflow builds/typechecks both apps on every push and PR to main.
+# When a PR is merged into main (push to main), it also triggers a deployment
+# on Render by calling the Render Deploy Hooks.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   RENDER_DEPLOY_HOOK_API  -> deploy hook URL of the API service
+#   RENDER_DEPLOY_HOOK_WEB  -> deploy hook URL of the web service
+
+name: CI and Deploy to Render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build and typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build API
+        working-directory: api
+        run: |
+          npm install --include=dev
+          npx prisma generate
+          npm run build
+
+      - name: Build Web
+        working-directory: web
+        env:
+          NEXT_PUBLIC_API_URL: https://crypto-remittance-api.onrender.com
+        run: |
+          npm install --include=dev
+          npm run build
+
+  deploy:
+    name: Trigger Render deploys
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy API
+        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
+
+      - name: Deploy Web
+        run: curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"

@@ -8,15 +8,18 @@ export interface WizardStep {
 interface WizardStepperProps {
   steps: WizardStep[];
   current: number;
+  /** When true, every step shows as completed (e.g. transfer reached COMPLETED). */
+  completed?: boolean;
 }
 
-export function WizardStepper({ steps, current }: WizardStepperProps) {
+export function WizardStepper({ steps, current, completed = false }: WizardStepperProps) {
+  const allComplete = completed || current >= steps.length;
   return (
     <nav aria-label="Progress" className="mb-8">
       <ol className="flex items-center">
         {steps.map((step, index) => {
-          const done = index < current;
-          const active = index === current;
+          const done = allComplete || index < current;
+          const active = !allComplete && index === current;
           return (
             <li
               key={step.id}
@@ -42,7 +45,7 @@ export function WizardStepper({ steps, current }: WizardStepperProps) {
                 <span
                   className={cn(
                     "hidden text-xs font-medium sm:block",
-                    active ? "text-slate-900 dark:text-white" : "text-slate-400",
+                    done || active ? "text-slate-900 dark:text-white" : "text-slate-400",
                   )}
                 >
                   {step.label}
