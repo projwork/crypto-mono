@@ -19,9 +19,12 @@ export function CTA() {
               Get Started Now
             </Button>
           </Link>
-          <button className="text-xs font-bold uppercase tracking-widest text-white border border-white/20 px-8 h-12 rounded-lg hover:bg-white/5 w-full sm:w-auto">
-            View Live Rates
-          </button>
+          {/* Fixed: Converted non-functional button to Link */}
+          <Link href="/rates" className="w-full sm:w-auto">
+            <button className="text-xs font-bold uppercase tracking-widest text-white border border-white/20 px-8 h-12 rounded-lg hover:bg-white/5 w-full">
+              View Live Rates
+            </button>
+          </Link>
         </div>
       </div>
     </section>

@@ -174,6 +174,7 @@ export default function KycPage() {
   const [data, setData] = useState<KycStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wasPending, setWasPending] = useState(false);
 
   // Upgrade form state
   const [selectedTier, setSelectedTier] = useState<KycTier>("TIER_2");
@@ -237,7 +238,13 @@ export default function KycPage() {
   }, [data]);
 
   useEffect(() => {
-    if (!loading && data?.status === "APPROVED" && !hasRedirectedRef.current) {
+    if (data?.status === "PENDING") {
+      setWasPending(true);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!loading && wasPending && data?.status === "APPROVED" && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
       (async () => {
         try {
@@ -249,7 +256,7 @@ export default function KycPage() {
         }
       })();
     }
-  }, [data, loading, router, refresh]);
+  }, [data, loading, router, refresh, wasPending]);
 
   // Shared validation + submit logic. tierOverride is always passed explicitly
   // so we never depend on React state that may not have flushed yet.
