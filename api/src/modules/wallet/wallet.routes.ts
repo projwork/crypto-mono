@@ -2,13 +2,14 @@ import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { authMiddleware } from "../../middleware/auth.js";
 import { sendOk } from "../../lib/apiResponse.js";
-import { depositAddressSchema, connectWalletSchema } from "./wallet.schemas.js";
+import { depositAddressSchema, connectWalletSchema, sendFromWalletSchema } from "./wallet.schemas.js";
 import {
   getDepositInstructions,
   getOrCreateDepositAddress,
   connectWallet,
-  getMyWallet,
+  getMyWallets,
   disconnectWallet,
+  sendFromConnectedWallet,
 } from "./wallet.service.js";
 
 /**
@@ -31,8 +32,17 @@ walletRouter.post(
 walletRouter.get(
   "/me",
   asyncHandler(async (req, res) => {
-    const wallet = await getMyWallet(req.user!.id);
-    sendOk(res, wallet);
+    const wallets = await getMyWallets(req.user!.id);
+    sendOk(res, { wallets });
+  }),
+);
+
+walletRouter.post(
+  "/send",
+  asyncHandler(async (req, res) => {
+    const input = sendFromWalletSchema.parse(req.body);
+    const result = await sendFromConnectedWallet(req.user!.id, input);
+    sendOk(res, result);
   }),
 );
 

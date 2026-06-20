@@ -12,5 +12,12 @@ export const connectWalletSchema = z.object({
   signature: z.string().optional(),
 });
 
+export const sendFromWalletSchema = z.object({
+  transferId: z.string().min(1, "transferId is required"),
+  fromAddress: z.string().min(1, "fromAddress is required"),
+  txHash: z.string().min(1).optional(),
+});
+
 export type DepositAddressInput = z.infer<typeof depositAddressSchema>;
 export type ConnectWalletInput = z.infer<typeof connectWalletSchema>;
+export type SendFromWalletInput = z.infer<typeof sendFromWalletSchema>;
