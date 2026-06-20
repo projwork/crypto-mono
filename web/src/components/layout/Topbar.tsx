@@ -92,6 +92,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         <button 
           onClick={handleLogout}
           disabled={signingOut}
+          aria-label="Sign out"
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:border-red-100 hover:bg-red-50 hover:text-red-600 transition-all dark:border-slate-800 dark:hover:bg-red-500/10"
           title="Sign out"
         >
