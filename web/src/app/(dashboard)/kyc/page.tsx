@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -71,6 +72,9 @@ function TierCard({
 
 export default function KycPage() {
   const { refresh } = useAuth();
+  const router = useRouter();
+  const hasRedirectedRef = useRef(false);
+
   const [data, setData] = useState<KycStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,10 +98,9 @@ export default function KycPage() {
       setSelectedTier(status.verification?.tier ?? status.tier ?? "TIER_2");
       
       if (status.verification) {
-      setProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
-      setSourceOfFunds(status.verification.sourceOfFunds ?? "");
-    }
-    
+        setProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
+        setSourceOfFunds(status.verification.sourceOfFunds ?? "");
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load verification status.");
     } finally {
@@ -108,6 +111,38 @@ export default function KycPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (data?.status === "PENDING" && !hasRedirectedRef.current) {
+      const intervalId = window.setInterval(async () => {
+        try {
+          const status = await kycApi.getStatus();
+          setData(status);
+        } catch {
+          // ignore polling errors and retry
+        }
+      }, 5000);
+
+      return () => window.clearInterval(intervalId);
+    }
+
+    return undefined;
+  }, [data]);
+
+  useEffect(() => {
+    if (!loading && data?.status === "APPROVED" && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      (async () => {
+        try {
+          await refresh();
+        } catch {
+          // ignore refresh errors and still redirect
+        } finally {
+          router.replace("/dashboard");
+        }
+      })();
+    }
+  }, [data, loading, router, refresh]);
 
   const handleSubmit = async () => {
     setSubmitError(null);

@@ -89,4 +89,39 @@ export const adminApi = {
   async updateFxRate(payload: UpdateFxRatePayload): Promise<FxRate> {
     return api.post<FxRate>("/api/admin/fx-rate", payload);
   },
+
+  async listUsers(filters: { role?: string; search?: string; limit?: number } = {}): Promise<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    country: string;
+    role: string;
+    kycTier: string;
+    kycStatus: string;
+    createdAt: string;
+    beneficiariesCount: number;
+    transfersCount: number;
+    connectedWalletsCount: number;
+    kycSubmissionsCount: number;
+  }[]> {
+    const params = new URLSearchParams();
+    if (filters.role) params.set("role", filters.role);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.limit) params.set("limit", String(filters.limit));
+    const qs = params.toString();
+    const { users } = await api.get<{ users: any[] }>(`/api/admin/users${qs ? `?${qs}` : ""}`);
+    return users;
+  },
+
+  async getUser(id: string): Promise<any> {
+    const { user, wallets, beneficiaries, transfers } = await api.get<{
+      user: any;
+      wallets: any[];
+      beneficiaries: any[];
+      transfers: any[];
+    }>(`/api/admin/users/${id}`);
+    return { user, wallets, beneficiaries, transfers };
+  },
 };
