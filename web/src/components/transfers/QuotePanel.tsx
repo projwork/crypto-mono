@@ -75,6 +75,12 @@ export function QuotePanel({ quote, loading, error, className }: QuotePanelProps
                 <dt>Rate</dt>
                 <dd>1 USD = {quote.usdToEtb} ETB</dd>
               </div>
+              {quote.rateSource && (
+                <div className="flex justify-between text-xs text-slate-400">
+                  <dt>Sources</dt>
+                  <dd>{quote.rateSource}</dd>
+                </div>
+              )}
             </dl>
           </div>
         )}

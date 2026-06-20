@@ -10,15 +10,21 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
 import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
 import { fxService } from "../fx/fx.service.js";
+import { getCryptoUsdPrice } from "../conversions/providers/cryptoPrice.provider.js";
 import { getUserTransferLimit } from "../kyc/kyc.service.js";
-import { getOrCreateDepositAddress, toDepositAddress } from "../wallet/wallet.service.js";
 import {
-  computeUsdValue,
-  getCryptoToUsd,
+  getOrCreateDepositAddress,
+  getMyWallets,
+  toDepositAddress,
+} from "../wallet/wallet.service.js";
+import {
   getFeeCrypto,
   getTransferFeeMode,
 } from "./transfers.pricing.js";
-import type { CreateTransferInput, TransferQuoteInput } from "./transfers.schemas.js";
+import type {
+  CreateTransferInput,
+  TransferQuoteInput,
+} from "./transfers.schemas.js";
 
 /** Full transfer quote — documented in CONTRACTS.md. */
 export interface TransferQuote {
@@ -32,6 +38,7 @@ export interface TransferQuote {
   feeEtb: number;
   payoutEtb: number;
   rateTimestamp: string;
+  rateSource: string;
 }
 
 export type PublicTransfer = ReturnType<typeof toPublicTransfer>;
@@ -57,24 +64,34 @@ const buildQuote = async (
 ): Promise<TransferQuote> => {
   await getOwnedBeneficiary(userId, input.beneficiaryId);
 
+  const cryptoPrice = await getCryptoUsdPrice(input.asset);
+  const fiatRate = await fxService.getCurrentRate();
+
   const feeCrypto = getFeeCrypto(input.asset, input.amount);
   const fxQuote = await fxService.quote({
     cryptoAmount: input.amount,
-    cryptoToUsd: getCryptoToUsd(input.asset),
+    cryptoToUsd: cryptoPrice.usdRate,
     feeMode: getTransferFeeMode(input.asset, input.amount),
+    usdToEtb: fiatRate.usdToEtb,
+    rateTimestamp: fiatRate.timestamp.toISOString(),
+    rateSource: fiatRate.source,
   });
+
+  const usdValue = Math.round(input.amount * cryptoPrice.usdRate * 100) / 100;
+  const rateSource = `${cryptoPrice.source} + ${fiatRate.source}`;
 
   return {
     asset: input.asset,
     amount: input.amount,
     beneficiaryId: input.beneficiaryId,
-    usdValue: computeUsdValue(input.asset, input.amount),
+    usdValue,
     usdToEtb: fxQuote.usdToEtb,
     grossEtb: fxQuote.grossEtb,
     feeCrypto,
     feeEtb: fxQuote.feeEtb,
     payoutEtb: fxQuote.payoutEtb,
     rateTimestamp: fxQuote.rateTimestamp,
+    rateSource,
   };
 };
 
@@ -134,7 +151,10 @@ export const quoteTransfer = async (
   input: TransferQuoteInput,
 ): Promise<TransferQuote> => buildQuote(userId, input);
 
-export const createTransfer = async (userId: string, input: CreateTransferInput) => {
+export const createTransfer = async (
+  userId: string,
+  input: CreateTransferInput,
+) => {
   const quote = await buildQuote(userId, input);
   const limit = await getUserTransferLimit(userId);
 
@@ -142,7 +162,11 @@ export const createTransfer = async (userId: string, input: CreateTransferInput)
     throw AppError.forbidden("KYC approval is required before sending money");
   }
 
-  if (!limit.unlimited && limit.remainingUsd !== null && quote.usdValue > limit.remainingUsd) {
+  if (
+    !limit.unlimited &&
+    limit.remainingUsd !== null &&
+    quote.usdValue > limit.remainingUsd
+  ) {
     throw AppError.badRequest(
       `Transfer exceeds your monthly limit. Remaining: $${limit.remainingUsd} USD`,
       { limit },
@@ -202,4 +226,134 @@ export const getTransferById = async (userId: string, transferId: string) => {
   }
 
   return toPublicTransfer(transfer);
+};
+
+// --- New Endpoint Functions ---
+export const confirmWallet = async (userId: string, transferId: string) => {
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: transferId, senderId: userId },
+    include: { wallet: true },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  if (!transfer.wallet) {
+    throw AppError.badRequest(
+      "No deposit wallet associated with this transfer",
+    );
+  }
+
+  const connectedWallets = await getMyWallets(userId);
+
+  return {
+    transfer: toPublicTransfer(transfer as any),
+    connectedWallets,
+    primaryConnectedWallet: connectedWallets[0] ?? null,
+    depositWallet: transfer.wallet
+      ? {
+          address: transfer.wallet.address,
+          asset: transfer.wallet.asset,
+        }
+      : null,
+  };
+};
+
+export interface TransferReceipt {
+  reference: string;
+  status: string;
+  asset: string;
+  sendAmount: string;
+  usdValue: string;
+  usdToEtb: string;
+  grossEtb: string;
+  feeEtb: string;
+  payoutEtb: string;
+  beneficiary: {
+    fullName: string;
+    payoutMethod: string;
+    bank?: string;
+    accountNumber?: string;
+    phoneNumber?: string;
+  };
+  txHash?: string;
+  payoutReference?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
+export const getReceipt = async (
+  userId: string,
+  transferId: string,
+): Promise<TransferReceipt> => {
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: transferId, senderId: userId },
+    include: { beneficiary: true },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  return {
+    reference: transfer.reference,
+    status: transfer.status,
+    asset: transfer.asset,
+    sendAmount: transfer.sendAmount.toString(),
+    usdValue: transfer.usdValue.toString(),
+    usdToEtb: transfer.usdToEtb.toString(),
+    grossEtb: transfer.grossEtb.toString(),
+    feeEtb: transfer.feeEtb.toString(),
+    payoutEtb: transfer.payoutEtb.toString(),
+    beneficiary: {
+      fullName: transfer.beneficiary.fullName,
+      payoutMethod: transfer.beneficiary.payoutMethod,
+      bank: transfer.beneficiary.bank ?? undefined,
+      accountNumber: transfer.beneficiary.accountNumber ?? undefined,
+      phoneNumber: transfer.beneficiary.phoneNumber ?? undefined,
+    },
+    txHash: transfer.txHash ?? undefined,
+    payoutReference: transfer.payoutReference ?? undefined,
+    completedAt: transfer.completedAt?.toISOString() ?? undefined,
+    createdAt: transfer.createdAt.toISOString(),
+  };
+};
+
+export interface PayoutDetails {
+  status: string;
+  payoutMethod: string;
+  bank?: string;
+  accountNumber?: string;
+  phoneNumber?: string;
+  amount: string;
+  reference?: string;
+  payoutReference?: string;
+  processedAt?: string;
+}
+
+export const getPayout = async (
+  userId: string,
+  transferId: string,
+): Promise<PayoutDetails> => {
+  const transfer = await prisma.transfer.findFirst({
+    where: { id: transferId, senderId: userId },
+    include: { beneficiary: true },
+  });
+
+  if (!transfer) {
+    throw AppError.notFound("Transfer not found");
+  }
+
+  return {
+    status: transfer.status,
+    payoutMethod: transfer.beneficiary.payoutMethod,
+    bank: transfer.beneficiary.bank ?? undefined,
+    accountNumber: transfer.beneficiary.accountNumber ?? undefined,
+    phoneNumber: transfer.beneficiary.phoneNumber ?? undefined,
+    amount: transfer.payoutEtb.toString(),
+    reference: transfer.reference,
+    payoutReference: transfer.payoutReference ?? undefined,
+    processedAt: transfer.completedAt?.toISOString() ?? undefined,
+  };
 };

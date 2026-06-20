@@ -8,7 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import Link from "next/link";
 
 declare global {
-  interface Window {
+    interface Window {
     ethereum?: any;
   }
 }

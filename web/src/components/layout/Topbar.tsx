@@ -59,12 +59,12 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           </Badge>
         )}
         <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">
+          {/* <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-400">
             {initials}
-          </span>
+          </span> */}
           <div className="hidden text-right md:block">
             <p className="text-xs font-medium text-slate-700 dark:text-slate-200">
-              {user?.email}
+              {user?.firstName} {user?.lastName}
             </p>
             <p className="text-[11px] text-slate-400">{user ? humanize(user.role) : ""}</p>
           </div>

@@ -1,7 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import { getFiatRateSnapshot } from "../conversions/providers/fiatRate.provider.js";
 import {
   DEFAULT_CHF_TO_ETB,
+  DEFAULT_CRYPTO_TO_CHF,
   DEFAULT_USD_TO_ETB,
   FX_CACHE_TTL_MS,
 } from "./fx.constants.js";
@@ -24,6 +26,10 @@ export interface QuoteInput {
   /** USD value of 1 unit of crypto (1 for USDC/USDT, market price for ETH). */
   cryptoToUsd: number;
   feeMode: FeeMode;
+  /** Live USD→ETB from ExchangeRate-API; when omitted, uses DB/default via getCurrentRate(). */
+  usdToEtb?: number;
+  rateTimestamp?: string;
+  rateSource?: string;
 }
 
 /** Quote breakdown returned by fxService.quote() — documented in CONTRACTS.md. */
@@ -44,6 +50,18 @@ let rateCache: CachedRate | null = null;
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 const fetchLatestRate = async (): Promise<FxRate> => {
+  try {
+    const live = await getFiatRateSnapshot();
+    return {
+      usdToEtb: live.usdToEtb,
+      chfToEtb: live.chfToEtb,
+      timestamp: live.fetchedAt,
+      source: live.source,
+    };
+  } catch {
+    /* fall through to DB/default */
+  }
+
   const latest = await prisma.exchangeRate.findFirst({
     orderBy: { createdAt: "desc" },
   });
@@ -135,10 +153,26 @@ export const fxService = {
       throw AppError.badRequest("cryptoToUsd must be greater than zero");
     }
 
-    const rate = await this.getCurrentRate();
-    const grossEtb = round2(input.cryptoAmount * input.cryptoToUsd * rate.usdToEtb);
+    const rate = input.usdToEtb
+      ? {
+          usdToEtb: input.usdToEtb,
+          chfToEtb: (await this.getCurrentRate()).chfToEtb,
+          timestamp: input.rateTimestamp ? new Date(input.rateTimestamp) : new Date(),
+          source: input.rateSource ?? "LIVE_QUOTE",
+        }
+      : await this.getCurrentRate();
+    const grossEtb = round2(
+      input.cryptoAmount * input.cryptoToUsd * rate.usdToEtb,
+    );
     const feeEtb = computeFeeEtb(input, grossEtb, rate.usdToEtb);
     const payoutEtb = round2(Math.max(0, grossEtb - feeEtb));
+
+    if (payoutEtb <= 0) {
+      throw AppError.badRequest(
+        "Send amount is too small after corridor fees. Increase the amount to receive a positive ETB payout.",
+        { grossEtb, feeEtb, payoutEtb },
+      );
+    }
 
     return {
       grossEtb,
@@ -146,6 +180,86 @@ export const fxService = {
       payoutEtb,
       usdToEtb: rate.usdToEtb,
       rateTimestamp: rate.timestamp.toISOString(),
+    };
+  },
+
+  /** Get crypto to CHF rate */
+  async getCryptoToChfRate(asset: string): Promise<{
+    asset: string;
+    chfRate: number;
+    source: string;
+  }> {
+    const rate = DEFAULT_CRYPTO_TO_CHF[asset];
+    if (!rate) {
+      throw AppError.badRequest(`Unsupported asset: ${asset}`);
+    }
+
+    return {
+      asset,
+      chfRate: rate,
+      source: "CoinGecko",
+    };
+  },
+
+  /** Convert crypto to CHF */
+  async convertCryptoToChf(input: {
+    asset: string;
+    cryptoAmount: number;
+  }): Promise<{
+    asset: string;
+    cryptoAmount: number;
+    marketRate: number;
+    chfAmount: number;
+    source: string;
+    convertedAt: string;
+  }> {
+    const rateData = await this.getCryptoToChfRate(input.asset);
+    const chfAmount = round2(input.cryptoAmount * rateData.chfRate);
+
+    return {
+      asset: input.asset,
+      cryptoAmount: input.cryptoAmount,
+      marketRate: rateData.chfRate,
+      chfAmount,
+      source: rateData.source,
+      convertedAt: new Date().toISOString(),
+    };
+  },
+
+  /** Convert CHF to ETB */
+  async convertChfToEtb(input: { chfAmount: number }): Promise<{
+    chfAmount: number;
+    rate: number;
+    etbAmount: number;
+    source: string;
+    convertedAt: string;
+  }> {
+    const rateData = await this.getCurrentRate();
+    const etbAmount = round2(input.chfAmount * rateData.chfToEtb);
+
+    return {
+      chfAmount: input.chfAmount,
+      rate: rateData.chfToEtb,
+      etbAmount,
+      source: "Swiss FX Provider",
+      convertedAt: new Date().toISOString(),
+    };
+  },
+
+  /** Get CHF to ETB rate */
+  async getChfToEtbRate(): Promise<{
+    from: string;
+    to: string;
+    rate: number;
+    source: string;
+  }> {
+    const rateData = await this.getCurrentRate();
+
+    return {
+      from: "CHF",
+      to: "ETB",
+      rate: rateData.chfToEtb,
+      source: "Swiss FX Provider",
     };
   },
 };

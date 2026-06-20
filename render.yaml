@@ -1,0 +1,96 @@
+# Render Blueprint (Infrastructure as Code) for the crypto-remittance monorepo.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Place this file at the ROOT of the repo (next to the `api/` and `web/`
+# folders and README.md) — Render only auto-detects a Blueprint at the repo root.
+#
+# This provisions TWO free web services:
+#   1. crypto-remittance-api  -> Express + Prisma backend (api/)
+#   2. crypto-remittance-web  -> Next.js frontend (web/)
+#
+# The PostgreSQL database is NOT defined here: Render's free Postgres expires
+# after 30 days, so we use Neon (https://neon.tech) instead. You paste the Neon
+# connection string into the DATABASE_URL env var (marked sync:false below)
+# when Render asks for it during the first deploy.
+#
+# IMPORTANT: the service names below become part of the public URLs:
+#   https://crypto-remittance-api.onrender.com
+#   https://crypto-remittance-web.onrender.com
+# If you change a name, update the hardcoded URLs in the envVars too.
+
+# Disable Pull Request Preview Environments. With this off, Render will NOT spin
+# up a deploy when you push to a feature branch or open a PR. Combined with
+# `branch: main` + `autoDeploy: true` on each service below, deploys happen ONLY
+# when a commit lands on main (i.e. when a PR is merged).
+previews:
+  generation: "off"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend API (Express + Prisma)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: crypto-remittance-api
+    runtime: node
+    plan: free
+    rootDir: api
+    region: frankfurt
+    branch: main
+    autoDeploy: false
+    healthCheckPath: /health
+    # --include=dev is REQUIRED: prisma, typescript and tsx live in
+    # devDependencies, and NODE_ENV=production would otherwise skip them.
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    # migrate deploy keeps the schema in sync; seed is idempotent (upserts) so it
+    # is safe to run on every boot and ensures demo users/data always exist.
+    # Seed is non-blocking (|| true) so a seeding hiccup never stops the API boot.
+    startCommand: npx prisma migrate deploy && (npm run seed || true) && npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "22.14.0"
+      - key: NODE_ENV
+        value: production
+      # PORT is injected automatically by Render; the app reads process.env.PORT.
+      - key: DATABASE_URL
+        sync: false # paste your Neon connection string in the dashboard
+      - key: CORS_ORIGINS
+        value: https://crypto-remittance-web.onrender.com
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: CONVERSION_RATE_CACHE_TTL_MS
+        value: "60000"
+      - key: CONVERSION_REQUEST_TIMEOUT_MS
+        value: "8000"
+      - key: COINGECKO_DEMO_API_KEY
+        sync: false # optional; leave blank to use built-in fallbacks
+
+  # ---------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: crypto-remittance-web
+    runtime: node
+    plan: free
+    rootDir: web
+    region: frankfurt
+    branch: main
+    autoDeploy: false
+    # NEXT_PUBLIC_* vars are inlined at BUILD time, so the API URL must be present
+    # before "npm run build" runs (it is, because envVars are set first).
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "22.14.0"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://crypto-remittance-api.onrender.com

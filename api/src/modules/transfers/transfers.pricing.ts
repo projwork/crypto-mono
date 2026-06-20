@@ -8,13 +8,16 @@ export const CRYPTO_TO_USD: Record<AssetType, number> = {
   [AssetType.ETH]: 3500,
 };
 
-/** PRD §6 Step 4: 2 USDC fee on a 100 USDC send. */
+/** PRD §6 Step 4: 2 USDC fee on a 100 USDC send; ETH uses 1% with a sensible minimum. */
 export const getTransferFeeMode = (asset: AssetType, amount: number): FeeMode => {
   if (asset === AssetType.ETH) {
-    const fee = Math.max(amount * 0.01, 0.001);
-    return { type: "crypto", amount: Math.round(fee * 1e6) / 1e6 };
+    const percentFee = amount * 0.01;
+    const minFee = 0.001;
+    // Only apply the 0.001 ETH floor when the send amount is larger than the floor itself.
+    const fee = amount <= minFee ? percentFee : Math.max(percentFee, minFee);
+    return { type: "crypto", amount: Math.min(Math.round(fee * 1e8) / 1e8, amount) };
   }
-  return { type: "crypto", amount: 2 };
+  return { type: "crypto", amount: Math.min(2, amount) };
 };
 
 export const getCryptoToUsd = (asset: AssetType): number => CRYPTO_TO_USD[asset];

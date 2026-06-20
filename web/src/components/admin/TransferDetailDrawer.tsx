@@ -80,7 +80,7 @@ export function TransferDetailDrawer({
           {transfer.txHash && (
             <div>
               <dt className="text-slate-500">Tx hash</dt>
-              <dd className="mt-1 break-all font-mono text-xs">{transfer.txHash}</dd>
+              <dd className=" text-slate-500">{transfer.txHash}</dd>
             </div>
           )}
           {transfer.failureReason && (
