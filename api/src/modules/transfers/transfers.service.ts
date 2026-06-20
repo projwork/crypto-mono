@@ -11,7 +11,6 @@ import { AppError } from "../../lib/apiResponse.js";
 import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
 import { fxService } from "../fx/fx.service.js";
 import { getCryptoUsdPrice } from "../conversions/providers/cryptoPrice.provider.js";
-import { getFiatRateSnapshot } from "../conversions/providers/fiatRate.provider.js";
 import { getUserTransferLimit } from "../kyc/kyc.service.js";
 import {
   getOrCreateDepositAddress,
@@ -65,22 +64,21 @@ const buildQuote = async (
 ): Promise<TransferQuote> => {
   await getOwnedBeneficiary(userId, input.beneficiaryId);
 
-  const [cryptoPrice, fiatRates] = await Promise.all([
-    getCryptoUsdPrice(input.asset),
-    getFiatRateSnapshot(),
-  ]);
+  const cryptoPrice = await getCryptoUsdPrice(input.asset);
+  const fiatRate = await fxService.getCurrentRate();
 
   const feeCrypto = getFeeCrypto(input.asset, input.amount);
   const fxQuote = await fxService.quote({
     cryptoAmount: input.amount,
     cryptoToUsd: cryptoPrice.usdRate,
     feeMode: getTransferFeeMode(input.asset, input.amount),
-    usdToEtb: fiatRates.usdToEtb,
-    rateTimestamp: fiatRates.fetchedAt.toISOString(),
+    usdToEtb: fiatRate.usdToEtb,
+    rateTimestamp: fiatRate.timestamp.toISOString(),
+    rateSource: fiatRate.source,
   });
 
   const usdValue = Math.round(input.amount * cryptoPrice.usdRate * 100) / 100;
-  const rateSource = `${cryptoPrice.source} + ${fiatRates.source}`;
+  const rateSource = `${cryptoPrice.source} + ${fiatRate.source}`;
 
   return {
     asset: input.asset,

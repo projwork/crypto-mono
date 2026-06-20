@@ -29,6 +29,7 @@ export interface QuoteInput {
   /** Live USD→ETB from ExchangeRate-API; when omitted, uses DB/default via getCurrentRate(). */
   usdToEtb?: number;
   rateTimestamp?: string;
+  rateSource?: string;
 }
 
 /** Quote breakdown returned by fxService.quote() — documented in CONTRACTS.md. */
@@ -155,9 +156,9 @@ export const fxService = {
     const rate = input.usdToEtb
       ? {
           usdToEtb: input.usdToEtb,
-          chfToEtb: DEFAULT_CHF_TO_ETB,
+          chfToEtb: (await this.getCurrentRate()).chfToEtb,
           timestamp: input.rateTimestamp ? new Date(input.rateTimestamp) : new Date(),
-          source: "LIVE_QUOTE",
+          source: input.rateSource ?? "LIVE_QUOTE",
         }
       : await this.getCurrentRate();
     const grossEtb = round2(
