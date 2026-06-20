@@ -26,6 +26,16 @@ function tierLabel(tier: KycTier): string {
   return humanize(tier.replace("TIER_", "Tier "));
 }
 
+// FIX (Bug 2): Helper to pick the initial selectedTier based on status/tier.
+// For approved users who can still upgrade, pre-select the next tier up so the
+// upgrade form is immediately actionable instead of showing "Select a higher tier".
+function initialSelectedTier(status: KycStatusResponse): KycTier {
+  if (status.status === "APPROVED" && status.tier !== "TIER_3") {
+    return status.tier === "TIER_1" ? "TIER_2" : "TIER_3";
+  }
+  return status.verification?.tier ?? status.tier ?? "TIER_2";
+}
+
 function TierCard({
   info,
   selected,
@@ -95,8 +105,9 @@ export default function KycPage() {
     try {
       const status = await kycApi.getStatus();
       setData(status);
-      setSelectedTier(status.verification?.tier ?? status.tier ?? "TIER_2");
-      
+      // FIX (Bug 2): use the helper so approved users see the next tier pre-selected.
+      setSelectedTier(initialSelectedTier(status));
+
       if (status.verification) {
         setProofOfAddressUrl(status.verification.proofOfAddressUrl ?? "");
         setSourceOfFunds(status.verification.sourceOfFunds ?? "");
@@ -144,58 +155,71 @@ export default function KycPage() {
     }
   }, [data, loading, router, refresh]);
 
-  const handleSubmit = async () => {
+  // FIX (Bug 1): Accept an optional tierOverride so callers that need to force a
+  // specific tier (e.g. "Update documents" which must always use the current tier)
+  // can do so without relying on a setState call that hasn't been flushed yet.
+  const handleSubmit = async (tierOverride?: KycTier) => {
     setSubmitError(null);
     setSubmitSuccess(false);
 
-    if (selectedTier !== "TIER_1") {
-    if (!passport && !nationalId && !data?.verification?.passportUrl && !data?.verification?.nationalIdUrl) {
-      setSubmitError("Please upload a passport or national ID.");
-      return;
-    }
-    if (!selfie && !data?.verification?.selfieUrl) {
-      setSubmitError("Please upload a selfie.");
-      return;
-    }
-  }
+    const tier = tierOverride ?? selectedTier;
 
-    if (selectedTier === "TIER_3") {
-    // Check local state AND existing saved data
-    const hasProofOfAddress = proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl;
-    const hasSourceOfFunds = sourceOfFunds.trim() || data?.verification?.sourceOfFunds;
+    if (tier !== "TIER_1") {
+      // FIX (Bug 3): mirror the same fallback used when building the payload so
+      // existing uploaded docs count as satisfying the validation guard.
+      const hasIdDoc =
+        passport ||
+        nationalId ||
+        data?.verification?.passportUrl ||
+        data?.verification?.nationalIdUrl;
 
-    if (!hasProofOfAddress) {
-      setSubmitError("Proof of address URL is required for Tier 3.");
-      return;
+      if (!hasIdDoc) {
+        setSubmitError("Please upload a passport or national ID.");
+        return;
+      }
+
+      const hasSelfie = selfie || data?.verification?.selfieUrl;
+      if (!hasSelfie) {
+        setSubmitError("Please upload a selfie.");
+        return;
+      }
     }
-    if (!hasSourceOfFunds) {
-      setSubmitError("Source of funds description is required for Tier 3.");
-      return;
+
+    if (tier === "TIER_3") {
+      const hasProofOfAddress = proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl;
+      const hasSourceOfFunds = sourceOfFunds.trim() || data?.verification?.sourceOfFunds;
+
+      if (!hasProofOfAddress) {
+        setSubmitError("Proof of address URL is required for Tier 3.");
+        return;
+      }
+      if (!hasSourceOfFunds) {
+        setSubmitError("Source of funds description is required for Tier 3.");
+        return;
+      }
     }
-  }
 
     setSubmitting(true);
     try {
-      // Inside handleSubmit function...
-    const payload: SubmitKycPayload = {
-      tier: selectedTier,
-      passport: passport ?? undefined,
-      nationalId: nationalId ?? undefined,
-      selfie: selfie ?? undefined,
-      proofOfAddressUrl: proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl || undefined,
-      sourceOfFunds: sourceOfFunds.trim() || data?.verification?.sourceOfFunds || undefined,
-    };
+      const payload: SubmitKycPayload = {
+        tier,
+        passport: passport ?? undefined,
+        nationalId: nationalId ?? undefined,
+        selfie: selfie ?? undefined,
+        proofOfAddressUrl: proofOfAddressUrl.trim() || data?.verification?.proofOfAddressUrl || undefined,
+        sourceOfFunds: sourceOfFunds.trim() || data?.verification?.sourceOfFunds || undefined,
+      };
 
-    // FIX: Normalize URLs using uploadUrl() before sending to backend
-    if (!payload.passport && data?.verification?.passportUrl) {
-      payload.passportUrl = uploadUrl(data.verification.passportUrl) ?? undefined;
-    }
-    if (!payload.nationalId && data?.verification?.nationalIdUrl) {
-      payload.nationalIdUrl = uploadUrl(data.verification.nationalIdUrl) ?? undefined;
-    }
-    if (!payload.selfie && data?.verification?.selfieUrl) {
-      payload.selfieUrl = uploadUrl(data.verification.selfieUrl) ?? undefined;
-    }
+      // Normalize URLs using uploadUrl() before sending to backend.
+      if (!payload.passport && data?.verification?.passportUrl) {
+        payload.passportUrl = uploadUrl(data.verification.passportUrl) ?? undefined;
+      }
+      if (!payload.nationalId && data?.verification?.nationalIdUrl) {
+        payload.nationalIdUrl = uploadUrl(data.verification.nationalIdUrl) ?? undefined;
+      }
+      if (!payload.selfie && data?.verification?.selfieUrl) {
+        payload.selfieUrl = uploadUrl(data.verification.selfieUrl) ?? undefined;
+      }
 
       await kycApi.submit(payload);
       setSubmitSuccess(true);
@@ -395,7 +419,7 @@ export default function KycPage() {
                   </>
                 )}
 
-                <Button onClick={handleSubmit} loading={submitting} size="lg">
+                <Button onClick={() => void handleSubmit()} loading={submitting} size="lg">
                   Submit for review
                 </Button>
               </CardContent>
@@ -409,7 +433,7 @@ export default function KycPage() {
                   title="Tier 1 — Basic verification"
                   description="Your email and phone from registration satisfy Tier 1 requirements. Submit to activate your $500/month limit."
                   action={
-                    <Button onClick={handleSubmit} loading={submitting}>
+                    <Button onClick={() => void handleSubmit()} loading={submitting}>
                       Activate Tier 1
                     </Button>
                   }
@@ -517,11 +541,10 @@ export default function KycPage() {
                   </>
                 )}
 
-                <Button 
-                  onClick={handleSubmit} 
-                  loading={submitting} 
+                <Button
+                  onClick={() => void handleSubmit()}
+                  loading={submitting}
                   size="lg"
-                  // Disable button if the selected tier isn't actually an upgrade
                   disabled={selectedTier === data.tier}
                 >
                   {selectedTier === data.tier ? "Select a higher tier" : "Submit upgrade request"}
@@ -532,7 +555,7 @@ export default function KycPage() {
         </>
       )}
 
-      {/* Edit documents (for approved users) */}
+      {/* Edit documents (for approved users at max tier) */}
       {canEditDocuments && !canUpgrade && (
         <Card>
           <CardHeader>
@@ -572,13 +595,11 @@ export default function KycPage() {
               existingUrl={uploadUrl(verification?.selfieUrl)}
             />
 
-            <Button 
-              onClick={() => {
-                // Ensure we submit with the CURRENT tier, not the selected upgrade tier
-                setSelectedTier(data.tier);
-                void handleSubmit();
-              }} 
-              loading={submitting} 
+            {/* FIX (Bug 1): Pass data.tier directly as tierOverride so we don't
+                depend on a setState flush before the async submit executes. */}
+            <Button
+              onClick={() => void handleSubmit(data.tier)}
+              loading={submitting}
               size="lg"
             >
               Update documents
