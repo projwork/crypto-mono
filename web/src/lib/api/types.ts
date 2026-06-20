@@ -117,6 +117,9 @@ export interface SubmitKycPayload {
   passport?: File;
   nationalId?: File;
   selfie?: File;
+  passportUrl?: string;
+  nationalIdUrl?: string;
+  selfieUrl?: string;
 }
 
 export interface PublicBeneficiary {

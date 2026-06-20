@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { EmptyBlock, ErrorBlock, LoadingBlock, PageHeader } from "@/components/ui/PageStates";
 import { ApiError } from "@/lib/api/client";
 import { kycApi } from "@/lib/api/kyc";
-import type { KycStatus, KycStatusResponse, KycTier, TierInfo } from "@/lib/api/types";
+import type { KycStatus, KycStatusResponse, KycTier, SubmitKycPayload, TierInfo } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { cn, formatUsd, humanize, uploadUrl } from "@/lib/utils";
 
@@ -131,14 +131,26 @@ export default function KycPage() {
 
     setSubmitting(true);
     try {
-      await kycApi.submit({
+      const payload: SubmitKycPayload = {
         tier: selectedTier,
         passport: passport ?? undefined,
         nationalId: nationalId ?? undefined,
         selfie: selfie ?? undefined,
         proofOfAddressUrl: proofOfAddressUrl.trim() || undefined,
         sourceOfFunds: sourceOfFunds.trim() || undefined,
-      });
+      };
+
+      if (!payload.passport && data?.verification?.passportUrl) {
+        payload.passportUrl = data.verification.passportUrl;
+      }
+      if (!payload.nationalId && data?.verification?.nationalIdUrl) {
+        payload.nationalIdUrl = data.verification.nationalIdUrl;
+      }
+      if (!payload.selfie && data?.verification?.selfieUrl) {
+        payload.selfieUrl = data.verification.selfieUrl;
+      }
+
+      await kycApi.submit(payload);
       setSubmitSuccess(true);
       setPassport(null);
       setNationalId(null);
@@ -172,7 +184,11 @@ export default function KycPage() {
 
   const verification = data.verification;
   const hasPendingReview = data.status === "PENDING" && verification !== null;
-  const canSubmit = data.status !== "APPROVED" && !hasPendingReview;
+  const isApproved = data.status === "APPROVED";
+  const isRejected = data.status === "REJECTED";
+  const showNewSubmissionForm = !isApproved && !hasPendingReview;
+  const canUpgrade = isApproved && data.tier !== "TIER_3";
+  const canEditDocuments = isApproved;
   const limitPct =
     data.limit.limitUsd && data.limit.limitUsd > 0
       ? Math.min(100, (data.limit.usedUsd / data.limit.limitUsd) * 100)
@@ -248,8 +264,8 @@ export default function KycPage() {
         </Card>
       </div>
 
-      {/* Tier selection */}
-      {canSubmit && (
+      {/* Tier selection / Upgrade */}
+      {showNewSubmissionForm && (
         <>
           <div>
             <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -360,6 +376,154 @@ export default function KycPage() {
             </Card>
           )}
         </>
+      )}
+
+      {/* Upgrade to higher tier (for approved users) */}
+      {canUpgrade && (
+        <>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Upgrade verification tier
+            </h2>
+            <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+              You are currently verified at {tierLabel(data.tier)}. Upgrade to access higher transfer limits.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {data.tiers
+                .filter((tier) => {
+                  const tierOrder = { TIER_1: 1, TIER_2: 2, TIER_3: 3 };
+                  return tierOrder[tier.tier] > tierOrder[data.tier];
+                })
+                .map((tier) => (
+                  <TierCard
+                    key={tier.tier}
+                    info={tier}
+                    selected={selectedTier === tier.tier}
+                    current={false}
+                    onSelect={() => setSelectedTier(tier.tier)}
+                  />
+                ))}
+            </div>
+          </div>
+
+          {/* Document upload for upgrade */}
+          {selectedTier !== "TIER_1" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Upgrade requirements</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {submitError && <Alert tone="error">{submitError}</Alert>}
+                {submitSuccess && (
+                  <Alert tone="success">
+                    Upgrade request submitted successfully. Your documents are now pending review.
+                  </Alert>
+                )}
+
+                <FileInput
+                  label="Passport"
+                  hint="Upload your passport photo page"
+                  value={passport}
+                  onChange={setPassport}
+                  existingUrl={uploadUrl(verification?.passportUrl)}
+                />
+                <FileInput
+                  label="National ID"
+                  hint="Or upload a national ID card"
+                  value={nationalId}
+                  onChange={setNationalId}
+                  existingUrl={uploadUrl(verification?.nationalIdUrl)}
+                />
+                <FileInput
+                  label="Selfie"
+                  hint="A clear photo of your face holding your ID"
+                  value={selfie}
+                  onChange={setSelfie}
+                  existingUrl={uploadUrl(verification?.selfieUrl)}
+                />
+
+                {selectedTier === "TIER_3" && (
+                  <>
+                    <Input
+                      label="Proof of address URL"
+                      placeholder="https://…"
+                      hint="Link to a utility bill or bank statement"
+                      value={proofOfAddressUrl}
+                      onChange={(e) => setProofOfAddressUrl(e.target.value)}
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="sourceOfFunds"
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300"
+                      >
+                        Source of funds
+                      </label>
+                      <textarea
+                        id="sourceOfFunds"
+                        rows={3}
+                        placeholder="Describe the origin of funds you plan to transfer…"
+                        value={sourceOfFunds}
+                        onChange={(e) => setSourceOfFunds(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <Button onClick={handleSubmit} loading={submitting} size="lg">
+                  Submit upgrade request
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Edit documents (for approved users) */}
+      {canEditDocuments && !canUpgrade && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Update documents</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {submitError && <Alert tone="error">{submitError}</Alert>}
+            {submitSuccess && (
+              <Alert tone="success">
+                Documents updated successfully. Your updates are now pending review.
+              </Alert>
+            )}
+
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              You can update your identity documents at any time. Leave a field empty to keep the existing document.
+            </p>
+
+            <FileInput
+              label="Passport"
+              hint="Upload your passport photo page"
+              value={passport}
+              onChange={setPassport}
+              existingUrl={uploadUrl(verification?.passportUrl)}
+            />
+            <FileInput
+              label="National ID"
+              hint="Or upload a national ID card"
+              value={nationalId}
+              onChange={setNationalId}
+              existingUrl={uploadUrl(verification?.nationalIdUrl)}
+            />
+            <FileInput
+              label="Selfie"
+              hint="A clear photo of your face holding your ID"
+              value={selfie}
+              onChange={setSelfie}
+              existingUrl={uploadUrl(verification?.selfieUrl)}
+            />
+
+            <Button onClick={handleSubmit} loading={submitting} size="lg">
+              Update documents
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {hasPendingReview && verification && (
