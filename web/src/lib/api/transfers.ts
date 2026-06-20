@@ -1,4 +1,4 @@
-import { api, API_URL } from "./client";
+import { api, API_URL, ApiError } from "./client";
 import { tokenStore } from "./tokenStore";
 import type {
   PublicTransfer,
@@ -41,6 +41,41 @@ export const transfersApi = {
       `/api/transfers/${id}/simulate-deposit`,
     );
     return transfer;
+  },
+
+  async continuePayout(id: string): Promise<PublicTransfer> {
+    const { transfer } = await api.post<{ transfer: PublicTransfer }>(
+      `/api/transfers/${id}/continue-payout`,
+    );
+    return transfer;
+  },
+
+  async downloadReceiptPdf(id: string, reference: string): Promise<void> {
+    const token = tokenStore.getAccess();
+    const res = await fetch(`${API_URL}/api/transfers/${id}/receipt.pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!res.ok) {
+      let message = "Failed to download receipt";
+      try {
+        const json = (await res.json()) as { error?: { message?: string } };
+        message = json.error?.message ?? message;
+      } catch {
+        /* binary or empty body */
+      }
+      throw new ApiError(res.status, "DOWNLOAD_FAILED", message);
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `receipt-${reference}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   },
 
   /**

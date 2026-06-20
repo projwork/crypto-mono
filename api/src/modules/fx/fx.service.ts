@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
+import { getFiatRateSnapshot } from "../conversions/providers/fiatRate.provider.js";
 import {
   DEFAULT_CHF_TO_ETB,
   DEFAULT_CRYPTO_TO_CHF,
@@ -25,6 +26,9 @@ export interface QuoteInput {
   /** USD value of 1 unit of crypto (1 for USDC/USDT, market price for ETH). */
   cryptoToUsd: number;
   feeMode: FeeMode;
+  /** Live USD→ETB from ExchangeRate-API; when omitted, uses DB/default via getCurrentRate(). */
+  usdToEtb?: number;
+  rateTimestamp?: string;
 }
 
 /** Quote breakdown returned by fxService.quote() — documented in CONTRACTS.md. */
@@ -45,6 +49,18 @@ let rateCache: CachedRate | null = null;
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 const fetchLatestRate = async (): Promise<FxRate> => {
+  try {
+    const live = await getFiatRateSnapshot();
+    return {
+      usdToEtb: live.usdToEtb,
+      chfToEtb: live.chfToEtb,
+      timestamp: live.fetchedAt,
+      source: live.source,
+    };
+  } catch {
+    /* fall through to DB/default */
+  }
+
   const latest = await prisma.exchangeRate.findFirst({
     orderBy: { createdAt: "desc" },
   });
@@ -136,12 +152,26 @@ export const fxService = {
       throw AppError.badRequest("cryptoToUsd must be greater than zero");
     }
 
-    const rate = await this.getCurrentRate();
+    const rate = input.usdToEtb
+      ? {
+          usdToEtb: input.usdToEtb,
+          chfToEtb: DEFAULT_CHF_TO_ETB,
+          timestamp: input.rateTimestamp ? new Date(input.rateTimestamp) : new Date(),
+          source: "LIVE_QUOTE",
+        }
+      : await this.getCurrentRate();
     const grossEtb = round2(
       input.cryptoAmount * input.cryptoToUsd * rate.usdToEtb,
     );
     const feeEtb = computeFeeEtb(input, grossEtb, rate.usdToEtb);
     const payoutEtb = round2(Math.max(0, grossEtb - feeEtb));
+
+    if (payoutEtb <= 0) {
+      throw AppError.badRequest(
+        "Send amount is too small after corridor fees. Increase the amount to receive a positive ETB payout.",
+        { grossEtb, feeEtb, payoutEtb },
+      );
+    }
 
     return {
       grossEtb,

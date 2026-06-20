@@ -154,6 +154,7 @@ export interface TransferQuote {
   feeEtb: number;
   payoutEtb: number;
   rateTimestamp: string;
+  rateSource?: string;
 }
 
 export interface TransferQuotePayload {

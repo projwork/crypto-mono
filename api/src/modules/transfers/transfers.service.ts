@@ -10,6 +10,8 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/apiResponse.js";
 import { toPublicBeneficiary } from "../beneficiaries/beneficiaries.service.js";
 import { fxService } from "../fx/fx.service.js";
+import { getCryptoUsdPrice } from "../conversions/providers/cryptoPrice.provider.js";
+import { getFiatRateSnapshot } from "../conversions/providers/fiatRate.provider.js";
 import { getUserTransferLimit } from "../kyc/kyc.service.js";
 import {
   getOrCreateDepositAddress,
@@ -17,8 +19,6 @@ import {
   toDepositAddress,
 } from "../wallet/wallet.service.js";
 import {
-  computeUsdValue,
-  getCryptoToUsd,
   getFeeCrypto,
   getTransferFeeMode,
 } from "./transfers.pricing.js";
@@ -39,6 +39,7 @@ export interface TransferQuote {
   feeEtb: number;
   payoutEtb: number;
   rateTimestamp: string;
+  rateSource: string;
 }
 
 export type PublicTransfer = ReturnType<typeof toPublicTransfer>;
@@ -64,24 +65,35 @@ const buildQuote = async (
 ): Promise<TransferQuote> => {
   await getOwnedBeneficiary(userId, input.beneficiaryId);
 
+  const [cryptoPrice, fiatRates] = await Promise.all([
+    getCryptoUsdPrice(input.asset),
+    getFiatRateSnapshot(),
+  ]);
+
   const feeCrypto = getFeeCrypto(input.asset, input.amount);
   const fxQuote = await fxService.quote({
     cryptoAmount: input.amount,
-    cryptoToUsd: getCryptoToUsd(input.asset),
+    cryptoToUsd: cryptoPrice.usdRate,
     feeMode: getTransferFeeMode(input.asset, input.amount),
+    usdToEtb: fiatRates.usdToEtb,
+    rateTimestamp: fiatRates.fetchedAt.toISOString(),
   });
+
+  const usdValue = Math.round(input.amount * cryptoPrice.usdRate * 100) / 100;
+  const rateSource = `${cryptoPrice.source} + ${fiatRates.source}`;
 
   return {
     asset: input.asset,
     amount: input.amount,
     beneficiaryId: input.beneficiaryId,
-    usdValue: computeUsdValue(input.asset, input.amount),
+    usdValue,
     usdToEtb: fxQuote.usdToEtb,
     grossEtb: fxQuote.grossEtb,
     feeCrypto,
     feeEtb: fxQuote.feeEtb,
     payoutEtb: fxQuote.payoutEtb,
     rateTimestamp: fxQuote.rateTimestamp,
+    rateSource,
   };
 };
 

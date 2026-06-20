@@ -55,9 +55,9 @@ export default function MetaMaskConnectPage() {
       const walletAddress = accounts[0];
 
       // 2. Send wallet address to backend
-      const response = await walletApi.connect(walletAddress);
+      const wallet = await walletApi.connect(walletAddress);
 
-      if (!response.wallet || !response.wallet.active) {
+      if (!wallet.active) {
         throw new Error("Wallet connection failed on backend");
       }
 
