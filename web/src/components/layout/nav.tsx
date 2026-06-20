@@ -59,6 +59,17 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: "Users",
+    href: "/admin/users",
+    roles: ["ADMIN"],
+    icon: icon(
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+      </>,
+    ),
+  },
+  {
     label: "Beneficiaries",
     href: "/beneficiaries",
     icon: icon(
@@ -77,16 +88,6 @@ export const NAV_ITEMS: NavItem[] = [
       <>
         <path d="M9 12l2 2 4-4" />
         <path d="M12 3a9 9 0 1 0 9 9" />
-      </>,
-    ),
-  },
-  {
-    label: "Notifications",
-    href: "/notifications",
-    icon: icon(
-      <>
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
       </>,
     ),
   },
@@ -143,6 +144,16 @@ export const NAV_ITEMS: NavItem[] = [
       <>
         <path d="M4 21V14M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" strokeLinecap="round" />
         <path d="M2 14h4M10 8h4M18 12h4" strokeLinecap="round" />
+      </>,
+    ),
+  },
+  {
+    label: "Notifications",
+    href: "/notifications",
+    icon: icon(
+      <>
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
       </>,
     ),
   },
