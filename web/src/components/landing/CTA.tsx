@@ -26,7 +26,6 @@ export function CTA() {
           >
             View Live Rates
           </Link>
-          </Link>
         </div>
       </div>
     </section>
