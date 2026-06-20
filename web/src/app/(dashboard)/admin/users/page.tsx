@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { ErrorBlock, LoadingBlock, PageHeader } from "@/components/ui/PageStates";
@@ -17,16 +17,21 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [search, setSearch] = useState("");
 
+  const latestRequestRef = useRef(0);
+
   const load = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setError(null);
     try {
       const list = await adminApi.listUsers({ role: roleFilter || undefined, search: search.trim() || undefined, limit: 200 });
+      if (requestId !== latestRequestRef.current) return;
       setUsers(list);
     } catch (err) {
+      if (requestId !== latestRequestRef.current) return;
       setError(err instanceof ApiError ? err.message : "Failed to load users.");
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [roleFilter, search]);
 
