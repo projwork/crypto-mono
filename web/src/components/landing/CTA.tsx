@@ -20,10 +20,12 @@ export function CTA() {
             </Button>
           </Link>
           {/* Fixed: Converted non-functional button to Link */}
-          <Link href="/rates" className="w-full sm:w-auto">
-            <button className="text-xs font-bold uppercase tracking-widest text-white border border-white/20 px-8 h-12 rounded-lg hover:bg-white/5 w-full">
-              View Live Rates
-            </button>
+          <Link
+            href="/rates"
+            className="w-full sm:w-auto inline-flex items-center justify-center text-xs font-bold uppercase tracking-widest text-white border border-white/20 px-8 h-12 rounded-lg hover:bg-white/5"
+          >
+            View Live Rates
+          </Link>
           </Link>
         </div>
       </div>
