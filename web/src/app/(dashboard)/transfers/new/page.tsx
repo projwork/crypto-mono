@@ -89,16 +89,10 @@ async function getMetaMaskChain(): Promise<"ETHEREUM" | "BSC" | "POLYGON" | "ARB
 }
 
 function getNetworkLabel(chainId: bigint): string {
-  switch (chainId) {
-    case 1n:
-      return "Ethereum Mainnet";
-    case 11155111n:
-      return "Sepolia testnet";
-    case 5n:
-      return "Goerli testnet";
-    default:
-      return `network (chain ID ${chainId})`;
-  }
+  if (chainId === BigInt(1)) return "Ethereum Mainnet";
+  if (chainId === BigInt(11155111)) return "Sepolia testnet";
+  if (chainId === BigInt(5)) return "Goerli testnet";
+  return `network (chain ID ${chainId})`;
 }
 
 function formatWalletSendError(err: unknown, amountEth: string, networkLabel: string): string {
@@ -403,7 +397,7 @@ export default function NewTransferPage() {
           );
         }
 
-        if (network.chainId === 1n) {
+        if (network.chainId === BigInt(1)) {
           throw new Error(
             "MetaMask is on Ethereum Mainnet. Switch to Sepolia testnet before sending a test transfer.",
           );
@@ -449,7 +443,7 @@ export default function NewTransferPage() {
       />
 
       {kycBlocked && (
-        <Alert tone="danger">
+        <Alert tone="error">
           Identity verification is required before triggering corridor movement.{" "}
           <Link href="/kyc" className="font-medium underline underline-offset-2">Complete verification</Link>
         </Alert>
@@ -579,7 +573,7 @@ export default function NewTransferPage() {
                   <p className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">{formatEtb(quote.payoutEtb)}</p>
                 </div>
               </dl>
-              {createError && <Alert tone="danger">{createError}</Alert>}
+              {createError && <Alert tone="error">{createError}</Alert>}
             </CardContent>
           </Card>
           <div className="flex justify-between gap-3">
@@ -611,7 +605,7 @@ export default function NewTransferPage() {
                   </div>
                 )
               )}
-              {walletError && <Alert tone="danger">{walletError}</Alert>}
+              {walletError && <Alert tone="error">{walletError}</Alert>}
             </CardContent>
           </Card>
         </div>
@@ -649,7 +643,7 @@ export default function NewTransferPage() {
                 <div className="flex justify-between"><p className="text-slate-500">Final Local Delivery Target</p><p className="font-semibold text-indigo-600 dark:text-indigo-400">{formatEtb(transfer.payoutEtb)}</p></div>
                 <div className="flex justify-between"><p className="text-slate-500">Verified Recipient Legal Name</p><p>{transfer.beneficiary.fullName}</p></div>
               </dl>
-              {sendError && <Alert tone="danger">{sendError}</Alert>}
+              {sendError && <Alert tone="error">{sendError}</Alert>}
             </CardContent>
           </Card>
 
@@ -684,7 +678,7 @@ export default function NewTransferPage() {
                     {PAYOUT_STATUS_MESSAGES.COMPLETED} Your recipient received {formatEtb(transfer.payoutEtb)}.
                   </Alert>
                 ) : transfer.status === "FAILED" ? (
-                  <Alert tone="danger">Transfer failed during ETB payout processing.</Alert>
+                  <Alert tone="error">Transfer failed during ETB payout processing.</Alert>
                 ) : (
                   <Alert tone="info">
                     {PAYOUT_STATUS_MESSAGES[transfer.status] ?? "Processing Ethiopian Birr payout…"}
@@ -704,7 +698,7 @@ export default function NewTransferPage() {
                   <div className="flex justify-between"><p className="text-slate-500">Payout Reference</p><p className="font-mono text-xs">{transfer.payoutReference}</p></div>
                 )}
               </dl>
-              {sendError && <Alert tone="danger">{sendError}</Alert>}
+              {sendError && <Alert tone="error">{sendError}</Alert>}
             </CardContent>
           </Card>
 
